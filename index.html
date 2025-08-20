@@ -1,322 +1,299 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>إدارة القاصة المالية</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
-    <link href="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.css" rel="stylesheet">
-    <style>
-        :root {
-            --primary-color: #3498db;
-            --secondary-color: #f8f9fa;
-            --accent-color: #2980b9;
-            --text-color: #333;
-            --light-color: #fff;
-        }
-        
-        body {
-            font-family: 'Tajawal', sans-serif;
-            background-color: #f5f7fa;
-            color: var(--text-color);
-        }
-        
-        .navbar-brand {
-            font-weight: 700;
-            color: var(--primary-color);
-        }
-        
-        .card {
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            border: none;
-            margin-bottom: 20px;
-        }
-        
-        .card-header {
-            background-color: var(--primary-color);
-            color: var(--light-color);
-            border-radius: 10px 10px 0 0 !important;
-            font-weight: 600;
-        }
-        
-        .btn-primary {
-            background-color: var(--primary-color);
-            border-color: var(--primary-color);
-        }
-        
-        .btn-primary:hover {
-            background-color: var(--accent-color);
-            border-color: var(--accent-color);
-        }
-        
-        .balance-display {
-            font-size: 2.5rem;
-            font-weight: 700;
-            color: var(--primary-color);
-        }
-        
-        .expense-table th {
-            background-color: var(--secondary-color);
-        }
-        
-        .modal-header {
-            background-color: var(--primary-color);
-            color: var(--light-color);
-        }
-        
-        @media (max-width: 768px) {
-            .balance-display {
-                font-size: 1.8rem;
-            }
-        }
-    </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>لوحة الأدمن - نظام المهام اليومي</title>
+<style>
+  :root{
+    --bg:#eef3f8; --card:#ffffff; --shadow1:#cfd8e3; --shadow2:#ffffff;
+    --text:#0f172a; --muted:#64748b; --accent:#2563eb; --ok:#16a34a; --danger:#ef4444;
+    --radius:16px;
+  }
+  *{box-sizing:border-box;font-family:system-ui,Arial}
+  body{margin:0;background:var(--bg);color:var(--text);padding:24px}
+  h1,h2{margin:8px 0 16px}
+  .wrap{max-width:1100px;margin:auto;display:grid;gap:16px}
+  .card{
+    background:var(--card); border-radius:var(--radius); padding:16px;
+    box-shadow: 10px 10px 20px var(--shadow1), -10px -10px 20px var(--shadow2);
+  }
+  .row{display:grid;gap:12px}
+  @media(min-width:800px){
+    .row-2{grid-template-columns:1fr 1fr}
+    .row-3{grid-template-columns:1fr 1fr 1fr}
+  }
+  label{font-size:14px;color:var(--muted)}
+  input,select,button,textarea{
+    width:100%;padding:12px;border:none;border-radius:12px;background:#f6f9fc;outline:none;
+    box-shadow: inset 6px 6px 12px #d5dde6, inset -6px -6px 12px #ffffff;
+  }
+  button{cursor:pointer;font-weight:600}
+  button.primary{background:var(--accent);color:#fff;box-shadow:none}
+  button.success{background:var(--ok);color:#fff}
+  button.danger{background:var(--danger);color:#fff}
+  .flex{display:flex;gap:8px;align-items:center}
+  .grid{display:grid;gap:10px}
+  .list{display:grid;gap:8px;max-height:340px;overflow:auto;padding-right:4px}
+  .employee{display:flex;justify-content:space-between;align-items:center;padding:10px;border-radius:12px;background:#f7fafc}
+  .muted{color:var(--muted);font-size:13px}
+  .pill{font-size:12px;padding:4px 8px;border-radius:999px;background:#e2e8f0}
+  .task{display:flex;justify-content:space-between;align-items:center;padding:10px;border-radius:12px;background:#f8fafc}
+  .task.done span{text-decoration:line-through;opacity:.6}
+  .progress{height:12px;background:#e5e7eb;border-radius:999px;overflow:hidden}
+  .progress > div{height:100%;background:var(--ok);width:0%}
+  .small{font-size:12px}
+  .copy{cursor:pointer}
+  .sep{height:1px;background:#e5e7eb;margin:8px 0}
+</style>
 </head>
 <body>
-    <!-- شريط التنقل -->
-    <nav class="navbar navbar-expand-lg navbar-light bg-light">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="#">
-                <i class="bi bi-wallet2"></i> إدارة القاصة المالية
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item">
-                        <button class="btn btn-outline-danger" id="resetAll">
-                            <i class="bi bi-trash"></i> إغلاق القاصة
-                        </button>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </nav>
+<div class="wrap">
+  <h1>لوحة الأدمن – نظام المهام اليومي</h1>
 
-    <div class="container py-4">
-        <!-- بطاقة الرصيد -->
-        <div class="card">
-            <div class="card-header">
-                <i class="bi bi-cash-stack"></i> رصيد القاصة
-            </div>
-            <div class="card-body text-center">
-                <h3 class="card-title">الرصيد الحالي</h3>
-                <div class="balance-display" id="currentBalance">0 د.ع</div>
-                <div class="mt-3">
-                    <button class="btn btn-primary me-2" id="addInitialBalance">
-                        <i class="bi bi-plus-circle"></i> إضافة رصيد أساسي
-                    </button>
-                    <button class="btn btn-primary" id="addAdditionalFunds">
-                        <i class="bi bi-plus-lg"></i> إيداع أموال إضافية
-                    </button>
-                </div>
-            </div>
-        </div>
+  <!-- إعدادات Firebase (ضع مفاتيحك هنا – موجودة أدناه بالفعل) -->
+  <div class="card">
+    <h2>الاتصال بـ Firebase</h2>
+    <div id="fb-status" class="muted">جاري التهيئة…</div>
+  </div>
 
-        <!-- بطاقة التحويلات -->
-        <div class="card">
-            <div class="card-header">
-                <i class="bi bi-arrow-left-right"></i> التحويلات
-            </div>
-            <div class="card-body">
-                <button class="btn btn-primary" id="transferFunds">
-                    <i class="bi bi-send"></i> تحويل أموال
-                </button>
-            </div>
+  <div class="row row-2">
+    <!-- إنشاء موظف -->
+    <div class="card">
+      <h2>إنشاء موظف جديد</h2>
+      <div class="grid">
+        <div>
+          <label>اسم الموظف</label>
+          <input id="emp-name" placeholder="مثال: أحمد فاضل" />
         </div>
-
-        <!-- بطاقة إضافة مصروف -->
-        <div class="card">
-            <div class="card-header">
-                <i class="bi bi-cart-plus"></i> تسجيل مصروف جديد
-            </div>
-            <div class="card-body">
-                <form id="expenseForm">
-                    <div class="mb-3">
-                        <label for="expenseAmount" class="form-label">المبلغ (دينار عراقي)</label>
-                        <input type="number" class="form-control" id="expenseAmount" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="expenseCategory" class="form-label">نوع المصروف</label>
-                        <select class="form-select" id="expenseCategory" required>
-                            <option value="">اختر نوع المصروف</option>
-                            <option value="صيانة">صيانة</option>
-                            <option value="مشتريات">مشتريات</option>
-                            <option value="مواصلات">مواصلات</option>
-                            <option value="تسلية">تسلية</option>
-                            <option value="فواتير">فواتير</option>
-                            <option value="أخرى">أخرى</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="expenseDescription" class="form-label">وصف المصروف (اختياري)</label>
-                        <textarea class="form-control" id="expenseDescription" rows="2"></textarea>
-                    </div>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-save"></i> حفظ المصروف
-                    </button>
-                </form>
-            </div>
+        <div class="flex">
+          <button class="primary" id="btn-create">توليد رابط خاص</button>
+          <span id="new-link" class="muted small"></span>
         </div>
-
-        <!-- بطاقة المصاريف -->
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <div>
-                    <i class="bi bi-list-check"></i> سجل المصاريف
-                </div>
-                <div>
-                    <select class="form-select form-select-sm" id="filterCategory" style="width: 150px;">
-                        <option value="">جميع الأنواع</option>
-                        <option value="صيانة">صيانة</option>
-                        <option value="مشتريات">مشتريات</option>
-                        <option value="مواصلات">مواصلات</option>
-                        <option value="تسلية">تسلية</option>
-                        <option value="فواتير">فواتير</option>
-                        <option value="أخرى">أخرى</option>
-                    </select>
-                </div>
-            </div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-hover expense-table">
-                        <thead>
-                            <tr>
-                                <th>#</th>
-                                <th>المبلغ</th>
-                                <th>النوع</th>
-                                <th>الوصف</th>
-                                <th>التاريخ</th>
-                                <th>الإجراءات</th>
-                            </tr>
-                        </thead>
-                        <tbody id="expensesTableBody">
-                            <!-- سيتم ملؤها بالجافاسكريبت -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <!-- بطاقة الإحصائيات -->
-        <div class="card">
-            <div class="card-header">
-                <i class="bi bi-pie-chart"></i> الإحصائيات
-            </div>
-            <div class="card-body">
-                <canvas id="expensesChart"></canvas>
-            </div>
-        </div>
+        <div class="muted small">الرابط سرّي؛ أي شخص يملكه يقدر يفتح صفحة الموظف. يُنصح إرساله مباشرة للموظف فقط.</div>
+      </div>
     </div>
 
-    <!-- Modal لإضافة الرصيد -->
-    <div class="modal fade" id="balanceModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="balanceModalTitle">إضافة رصيد</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="balanceForm">
-                        <div class="mb-3">
-                            <label for="balanceAmount" class="form-label">المبلغ (دينار عراقي)</label>
-                            <input type="number" class="form-control" id="balanceAmount" required>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                    <button type="button" class="btn btn-primary" id="confirmBalance">تأكيد</button>
-                </div>
-            </div>
+    <!-- الموظفون -->
+    <div class="card">
+      <h2>الموظفون</h2>
+      <div class="list" id="emp-list"></div>
+    </div>
+  </div>
+
+  <div class="row row-2">
+    <!-- إضافة مهام -->
+    <div class="card">
+      <h2>إضافة مهام لموظف</h2>
+      <div class="grid">
+        <div>
+          <label>اختر الموظف</label>
+          <select id="sel-emp"></select>
         </div>
+        <div>
+          <label>تاريخ المهام</label>
+          <input id="task-date" type="date"/>
+        </div>
+        <div>
+          <label>المهمة</label>
+          <input id="task-text" placeholder="اكتب المهمة هنا"/>
+        </div>
+        <div class="flex">
+          <button class="primary" id="btn-add-task">إضافة مهمة</button>
+          <button id="btn-add-bulk">إضافة مجموعة (سطر لكل مهمة)</button>
+        </div>
+        <textarea id="bulk" rows="5" placeholder="اكتب عدة مهام، كل سطر مهمة"></textarea>
+      </div>
     </div>
 
-    <!-- Modal للتحويل -->
-    <div class="modal fade" id="transferModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">تحويل أموال</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="transferForm">
-                        <div class="mb-3">
-                            <label for="transferAmount" class="form-label">المبلغ (دينار عراقي)</label>
-                            <input type="number" class="form-control" id="transferAmount" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="transferAccount" class="form-label">الحساب الهدف</label>
-                            <input type="text" class="form-control" id="transferAccount" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="transferDescription" class="form-label">الوصف (اختياري)</label>
-                            <textarea class="form-control" id="transferDescription" rows="2"></textarea>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                    <button type="button" class="btn btn-primary" id="confirmTransfer">تحويل</button>
-                </div>
-            </div>
+    <!-- متابعة مهام الموظف -->
+    <div class="card">
+      <h2>متابعة المهام</h2>
+      <div class="grid">
+        <div>
+          <label>اختر الموظف</label>
+          <select id="sel-watch"></select>
         </div>
+        <div class="progress"><div id="bar"></div></div>
+        <div class="muted small" id="stats">0/0</div>
+        <div class="list" id="watch-list"></div>
+      </div>
     </div>
+  </div>
 
-    <!-- Modal لتعديل المصروف -->
-    <div class="modal fade" id="editExpenseModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">تعديل المصروف</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="editExpenseForm">
-                        <input type="hidden" id="editExpenseId">
-                        <div class="mb-3">
-                            <label for="editExpenseAmount" class="form-label">المبلغ (دينار عراقي)</label>
-                            <input type="number" class="form-control" id="editExpenseAmount" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="editExpenseCategory" class="form-label">نوع المصروف</label>
-                            <select class="form-select" id="editExpenseCategory" required>
-                                <option value="صيانة">صيانة</option>
-                                <option value="مشتريات">مشتريات</option>
-                                <option value="مواصلات">مواصلات</option>
-                                <option value="تسلية">تسلية</option>
-                                <option value="فواتير">فواتير</option>
-                                <option value="أخرى">أخرى</option>
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label for="editExpenseDescription" class="form-label">وصف المصروف (اختياري)</label>
-                            <textarea class="form-control" id="editExpenseDescription" rows="2"></textarea>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                    <button type="button" class="btn btn-primary" id="saveEditExpense">حفظ التعديلات</button>
-                </div>
-            </div>
+  <div class="card">
+    <h2>ملاحظات الأمان (هام)</h2>
+    <ul class="small">
+      <li>هذه النسخة تعتمد <b>رابطًا سرّيًا</b> لكل موظف (Token) ويحفظ مهامه تحت هذا الرابط. عمليًا: من يمتلك الرابط يستطيع فتح مهامه.</li>
+      <li>للإصدار الاحترافي: فعّل <b>Firebase Authentication</b> للموظفين (بريد/كلمة سر أو Anonymous) وثبّت صلاحيات القراءة/الكتابة بقواعد الأمان.</li>
+    </ul>
+  </div>
+</div>
+
+<script type="module">
+// ===== Firebase SDKs =====
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-analytics.js";
+import { getFirestore, doc, setDoc, getDoc, addDoc, collection, query, where, onSnapshot, serverTimestamp, updateDoc, orderBy } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+
+// === استخدم ضبطك الذي أرسلته ===
+const firebaseConfig = {
+  apiKey: "AIzaSyA7KirsWgafKXPsQfFl3v6ssMaAb_zjTps",
+  authDomain: "tasks-bce7f.firebaseapp.com",
+  projectId: "tasks-bce7f",
+  storageBucket: "tasks-bce7f.firebasestorage.app",
+  messagingSenderId: "493499367071",
+  appId: "1:493499367071:web:c667a4666f1e84d8b32caa",
+  measurementId: "G-HR305C8QHR"
+};
+const app = initializeApp(firebaseConfig);
+getAnalytics(app);
+const db = getFirestore(app);
+document.getElementById('fb-status').textContent = "تم الاتصال بـ Firebase ✅";
+
+// ===== عناصر DOM =====
+const empName = document.getElementById('emp-name');
+const btnCreate = document.getElementById('btn-create');
+const newLink = document.getElementById('new-link');
+const empList = document.getElementById('emp-list');
+const selEmp = document.getElementById('sel-emp');
+const selWatch = document.getElementById('sel-watch');
+const taskDate = document.getElementById('task-date');
+const taskText = document.getElementById('task-text');
+const btnAddTask = document.getElementById('btn-add-task');
+const bulk = document.getElementById('bulk');
+const btnAddBulk = document.getElementById('btn-add-bulk');
+const watchList = document.getElementById('watch-list');
+const bar = document.getElementById('bar');
+const stats = document.getElementById('stats');
+
+function genToken(len=28){
+  const chars='abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let s=''; for(let i=0;i<len;i++) s+=chars[Math.floor(Math.random()*chars.length)];
+  return s;
+}
+function employeeUrl(token){
+  const base = location.origin + location.pathname.replace('admin.html','');
+  return `${base}employee.html?token=${token}`;
+}
+
+async function createEmployee(){
+  const name = empName.value.trim();
+  if(!name){ alert('اكتب اسم الموظف'); return; }
+  const token = genToken();
+  // هيكل الروابط: links/{token} => { name, createdAt }
+  await setDoc(doc(db,'links',token),{
+    name, createdAt: serverTimestamp()
+  });
+  const url = employeeUrl(token);
+  newLink.innerHTML = `تم الإنشاء: <span class="pill copy" title="نسخ الرابط">${url}</span>`;
+  newLink.onclick = async ()=>{
+    await navigator.clipboard.writeText(url);
+    newLink.querySelector('.pill').textContent = 'تم نسخ الرابط ✅';
+    setTimeout(()=> newLink.innerHTML = url, 1200);
+  }
+  empName.value='';
+}
+
+btnCreate.onclick = createEmployee;
+
+// الاستماع إلى جميع الموظفين (الروابط)
+onSnapshot(collection(db,'links'), (snap)=>{
+  empList.innerHTML='';
+  selEmp.innerHTML=''; selWatch.innerHTML='';
+  snap.forEach(d=>{
+    const data=d.data(); const token=d.id;
+    const url=employeeUrl(token);
+    // قائمة العرض
+    const div=document.createElement('div');
+    div.className='employee';
+    div.innerHTML=`
+      <div>
+        <div><b>${data.name||'—'}</b></div>
+        <div class="muted small">${url}</div>
+      </div>
+      <div class="flex">
+        <button class="success small" data-watch="${token}">متابعة</button>
+        <button class="danger small" data-del="${token}">حذف</button>
+      </div>`;
+    div.querySelector('[data-watch]').onclick=()=> {
+      selWatch.value=token; loadWatch(token);
+      window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'});
+    };
+    div.querySelector('[data-del]').onclick=async()=>{
+      if(confirm('حذف الموظف ورابطه؟ سيحذف الروابط فقط (المهام تبقى في Firestore إن لم تنظّفها).')) {
+        await updateDoc(doc(db,'links',token),{deleted:true});
+        alert('تم التأشير كـ محذوف. يمكنك لاحقًا تنظيف المهام يدويًا من الكونسول.');
+      }
+    };
+    empList.appendChild(div);
+
+    // قوائم الاختيار
+    const opt1=document.createElement('option'); opt1.value=token; opt1.textContent=data.name;
+    const opt2=document.createElement('option'); opt2.value=token; opt2.textContent=data.name;
+    selEmp.appendChild(opt1); selWatch.appendChild(opt2);
+  });
+});
+
+// إضافة مهمة مفردة
+async function addSingleTask(){
+  const token = selEmp.value; if(!token){ alert('اختر موظّف'); return; }
+  const text = taskText.value.trim(); if(!text){ alert('اكتب المهمة'); return; }
+  const date = taskDate.value || new Date().toISOString().slice(0,10);
+  await addDoc(collection(db,'links',token,'tasks'),{
+    text, done:false, date, createdAt: serverTimestamp()
+  });
+  taskText.value='';
+}
+// إضافة مجموعة مهام
+async function addBulkTasks(){
+  const token = selEmp.value; if(!token){ alert('اختر موظّف'); return; }
+  const date = taskDate.value || new Date().toISOString().slice(0,10);
+  const lines = bulk.value.split('\n').map(s=>s.trim()).filter(Boolean);
+  if(!lines.length){ alert('اكتب مهام (كل سطر مهمة)'); return; }
+  for(const text of lines){
+    await addDoc(collection(db,'links',token,'tasks'),{ text, done:false, date, createdAt: serverTimestamp() });
+  }
+  bulk.value='';
+}
+btnAddTask.onclick = addSingleTask;
+btnAddBulk.onclick = addBulkTasks;
+
+// متابعة موظف
+let unSubWatch = null;
+function loadWatch(token){
+  if(unSubWatch) unSubWatch();
+  const q = query(collection(db,'links',token,'tasks'), orderBy('createdAt','asc'));
+  unSubWatch = onSnapshot(q, (snap)=>{
+    watchList.innerHTML='';
+    let total=0, done=0;
+    snap.forEach(d=>{
+      const t=d.data(); total++; if(t.done) done++;
+      const row=document.createElement('div');
+      row.className='task'+(t.done?' done':'');
+      row.innerHTML = `
+        <div>
+          <div><span>${t.text}</span></div>
+          <div class="muted small">${t.date || '—'}</div>
         </div>
-    </div>
-
-    <!-- نهاية الصفحة -->
-    <footer class="bg-light text-center py-3 mt-4">
-        <div class="container">
-            <p class="mb-0">تطبيق إدارة القاصة المالية &copy; 2023</p>
-        </div>
-    </footer>
-
-    <!-- المكتبات المطلوبة -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
-    <script src="app.js"></script>
+        <div class="flex">
+          <button class="small" data-toggle="${d.id}">${t.done?'إلغاء ✔':'وضع ✔'}</button>
+          <button class="danger small" data-del="${d.id}">حذف</button>
+        </div>`;
+      row.querySelector('[data-toggle]').onclick=async()=>{
+        await updateDoc(doc(db,'links',token,'tasks',d.id),{done: !t.done});
+      };
+      row.querySelector('[data-del]').onclick=async()=>{
+        if(confirm('حذف هذه المهمة؟')) await updateDoc(doc(db,'links',token,'tasks',d.id),{deleted:true});
+      };
+      watchList.appendChild(row);
+    });
+    const pct = total ? Math.round((done/total)*100) : 0;
+    bar.style.width = pct+'%';
+    stats.textContent = `منجز: ${done} / الكل: ${total} (${pct}%)`;
+  });
+}
+selWatch.onchange = (e)=> loadWatch(e.target.value);
+</script>
 </body>
 </html>
