@@ -1,119 +1,144 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="ar">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>مهامي اليومية</title>
-<style>
-  :root{
-    --bg:#f2f5fa; --card:#ffffff; --shadow1:#cfd8e3; --shadow2:#ffffff;
-    --text:#0f172a; --muted:#64748b; --ok:#16a34a; --accent:#2563eb; --radius:18px;
-  }
-  *{box-sizing:border-box;font-family:system-ui,Arial}
-  body{margin:0;background:var(--bg);color:var(--text);padding:22px}
-  .wrap{max-width:700px;margin:auto}
-  .card{
-    background:var(--card); border-radius:var(--radius); padding:16px;
-    box-shadow: 10px 10px 20px var(--shadow1), -10px -10px 20px var(--shadow2);
-  }
-  h1{margin:0 0 8px}
-  .muted{color:var(--muted);font-size:13px}
-  .task{display:flex;justify-content:space-between;align-items:center;padding:12px;border-radius:14px;background:#f8fafc;margin:10px 0}
-  .task.done span{text-decoration:line-through;opacity:.6}
-  .progress{height:12px;background:#e5e7eb;border-radius:999px;overflow:hidden;margin-top:6px}
-  .progress>div{height:100%;background:var(--ok);width:0%}
-  input,button,select{width:100%;padding:12px;border:none;border-radius:12px;background:#f6f9fc;outline:none;
-    box-shadow: inset 6px 6px 12px #d5dde6, inset -6px -6px 12px #ffffff;}
-  button{cursor:pointer;font-weight:600}
-  button.primary{background:var(--accent);color:#fff;box-shadow:none}
-  .row{display:grid;gap:10px}
-  @media(min-width:600px){ .row-2{grid-template-columns:1fr 1fr} }
-</style>
+  <meta charset="UTF-8">
+  <title>مهامي - الموظف</title>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Cairo', sans-serif;
+      background: linear-gradient(135deg, #4facfe, #00f2fe);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .container {
+      width: 95%;
+      max-width: 600px;
+      background: rgba(255,255,255,0.2);
+      backdrop-filter: blur(15px);
+      border-radius: 15px;
+      padding: 20px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+      color: #fff;
+      text-align: center;
+    }
+    h2 { margin-bottom: 10px; }
+    button {
+      margin: 5px;
+      padding: 10px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .pdf-btn { background: #2196f3; color: white; }
+    .progress { background: rgba(255,255,255,0.2); border-radius: 20px; overflow: hidden; margin: 15px 0; }
+    .progress-bar { height: 20px; background: #4caf50; width: 0%; transition: width 0.5s; }
+    .task { background: rgba(255,255,255,0.15); margin: 10px 0; padding: 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; }
+    .task.done { background: rgba(76,175,80,0.5); text-decoration: line-through; }
+    .done-btn { background: #4caf50; color:white; }
+    .delay-btn { background: #ff9800; color:white; }
+    .delays { font-size: 12px; color: #ffd54f; }
+    #toast { position: fixed; bottom: 20px; right: 20px; background: rgba(0,0,0,0.7); color: #fff; padding: 10px 20px; border-radius: 8px; display: none; }
+  </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="card">
-    <h1 id="emp-name">مهامي اليومية</h1>
-    <div class="muted" id="sub">—</div>
-    <div class="row row-2" style="margin-top:12px">
-      <input type="date" id="date"/>
-      <button class="primary" id="btn-date">عرض مهام التاريخ</button>
-    </div>
-    <div class="progress"><div id="bar"></div></div>
-  </div>
-
-  <div class="card" style="margin-top:14px">
-    <div id="list"></div>
-  </div>
+<div class="container">
+  <h2 id="empName">مهامي</h2>
+  <button class="pdf-btn" onclick="downloadPDF()">📥 تحميل تقرير PDF</button>
+  <div class="progress"><div class="progress-bar" id="progressBar"></div></div>
+  <p id="progressText">0 / 0 مكتملة</p>
+  <h3>📌 مهام اليوم</h3>
+  <div id="todayTasks"></div>
+  <h3>⏳ مهام مؤجلة</h3>
+  <div id="delayedTasks"></div>
 </div>
+<div id="toast"></div>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
-import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-analytics.js";
-import { getFirestore, doc, getDoc, collection, query, where, onSnapshot, updateDoc, orderBy } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyA7KirsWgafKXPsQfFl3v6ssMaAb_zjTps",
+    authDomain: "tasks-bce7f.firebaseapp.com",
+    databaseURL: "https://tasks-bce7f-default-rtdb.firebaseio.com",
+    projectId: "tasks-bce7f",
+    storageBucket: "tasks-bce7f.firebasestorage.app",
+    messagingSenderId: "493499367071",
+    appId: "1:493499367071:web:c667a4666f1e84d8b32caa",
+    measurementId: "G-HR305C8QHR"
+  };
 
-const firebaseConfig = {
-  apiKey: "AIzaSyA7KirsWgafKXPsQfFl3v6ssMaAb_zjTps",
-  authDomain: "tasks-bce7f.firebaseapp.com",
-  projectId: "tasks-bce7f",
-  storageBucket: "tasks-bce7f.firebasestorage.app",
-  messagingSenderId: "493499367071",
-  appId: "1:493499367071:web:c667a4666f1e84d8b32caa",
-  measurementId: "G-HR305C8QHR"
-};
-const app = initializeApp(firebaseConfig); getAnalytics(app);
-const db = getFirestore(app);
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
 
-const params = new URLSearchParams(location.search);
-const token = params.get('token');
-if(!token){ document.body.innerHTML='<div class="wrap"><div class="card">رابط غير صالح</div></div>'; throw new Error('No token'); }
+  const urlParams = new URLSearchParams(window.location.search);
+  const empId = urlParams.get("emp");
 
-const empName = document.getElementById('emp-name');
-const sub = document.getElementById('sub');
-const list = document.getElementById('list');
-const bar = document.getElementById('bar');
-const dateInput = document.getElementById('date');
-const btnDate = document.getElementById('btn-date');
+  if(!empId){ document.body.innerHTML="<h2 style='color:white'>❌ رابط غير صحيح</h2>"; }
+  else { loadEmployee(empId); }
 
-const today = new Date().toISOString().slice(0,10);
-dateInput.value = today;
+  function showToast(msg){ const t=document.getElementById("toast"); t.innerText=msg; t.style.display="block"; setTimeout(()=>t.style.display="none",3000); }
 
-const linkDoc = await getDoc(doc(db,'links',token));
-if(!linkDoc.exists()){ document.body.innerHTML='<div class="wrap"><div class="card">الرابط غير موجود</div></div>'; throw new Error('link not found'); }
-
-const name = linkDoc.data().name || '—';
-empName.textContent = `الموظف: ${name}`;
-sub.textContent = `التاريخ: ${today}`;
-
-let unSub=null;
-function listen(dateStr){
-  if(unSub) unSub();
-  sub.textContent = `التاريخ: ${dateStr}`;
-  const q = query(collection(db,'links',token,'tasks'), where('date','==',dateStr), orderBy('createdAt','asc'));
-  unSub = onSnapshot(q, (snap)=>{
-    list.innerHTML='';
-    let total=0, done=0;
-    snap.forEach(d=>{
-      const t=d.data(); if(t.deleted) return;
-      total++; if(t.done) done++;
-      const row=document.createElement('div');
-      row.className='task' + (t.done?' done':'');
-      row.innerHTML = `
-        <span>${t.text}</span>
-        <input type="checkbox" ${t.done?'checked':''} />
-      `;
-      row.querySelector('input').onchange = async (e)=>{
-        await updateDoc(doc(db,'links',token,'tasks',d.id),{done: e.target.checked});
-      };
-      list.appendChild(row);
+  function loadEmployee(empId){
+    db.ref("employees/"+empId).once("value",snap=>{
+      if(snap.exists()){ document.getElementById("empName").innerText="👤 "+snap.val().name; }
     });
-    const pct = total ? Math.round((done/total)*100) : 0;
-    bar.style.width = pct+'%';
-  });
-}
-listen(today);
+    const today=new Date().toISOString().split("T")[0];
+    db.ref("tasks/"+empId+"/"+today).on("value",snap=>{
+      renderTasks(snap.val()||[], empId, today);
+    });
+  }
 
-btnDate.onclick = ()=> listen(dateInput.value || today);
+  function renderTasks(tasks, empId, date){
+    const todayContainer=document.getElementById("todayTasks");
+    const delayedContainer=document.getElementById("delayedTasks");
+    todayContainer.innerHTML=""; delayedContainer.innerHTML="";
+    let doneCount=0;
+    tasks.forEach((task,i)=>{
+      if(task.status==="done") doneCount++;
+      const div=document.createElement("div");
+      div.className="task "+(task.status==="done"?"done":"");
+      div.innerHTML=`
+        <span>${task.text} <span class="delays">${task.delays>0?"(تأجيل:"+task.delays+")":""}</span></span>
+        <div>
+          <button class="done-btn" onclick="finishTask('${empId}','${date}',${i})">✔</button>
+          <button class="delay-btn" onclick="delayTask('${empId}','${date}',${i})">⏳</button>
+        </div>`;
+      if(task.delays>0) delayedContainer.appendChild(div);
+      else todayContainer.appendChild(div);
+    });
+    let percent=tasks.length?(doneCount/tasks.length*100):0;
+    document.getElementById("progressBar").style.width=percent+"%";
+    document.getElementById("progressText").innerText=`${doneCount} / ${tasks.length} مكتملة`;
+  }
+
+  function finishTask(empId,date,index){ db.ref("tasks/"+empId+"/"+date+"/"+index+"/status").set("done"); showToast("✅ تم الإنجاز"); }
+  function delayTask(empId,date,index){
+    db.ref("tasks/"+empId+"/"+date).once("value",snap=>{
+      let tasks=snap.val()||[];
+      let task=tasks[index]; task.status="pending"; task.delays=(task.delays||0)+1;
+      let tomorrow=new Date(date); tomorrow.setDate(tomorrow.getDate()+1);
+      let next=tomorrow.toISOString().split("T")[0];
+      db.ref("tasks/"+empId+"/"+next).push(task);
+      tasks.splice(index,1);
+      db.ref("tasks/"+empId+"/"+date).set(tasks);
+      showToast("⏳ تم تأجيل المهمة");
+    });
+  }
+
+  function downloadPDF(){
+    const { jsPDF } = window.jspdf;
+    const doc=new jsPDF();
+    doc.text("تقرير مهامي",10,10);
+    let tasks=document.querySelectorAll(".task");
+    let y=20;
+    tasks.forEach(t=>{ doc.text(t.innerText,10,y); y+=10; });
+    doc.save("my-tasks.pdf");
+  }
 </script>
 </body>
 </html>
