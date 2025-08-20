@@ -1,109 +1,127 @@
 <!DOCTYPE html>
-<html lang="ar">
+<html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
   <title>لوحة التحكم - الأدمن</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+  <!-- jsPDF لتقارير PDF -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
   <style>
-    body {
-      font-family: 'Cairo', sans-serif;
-      margin: 0;
-      padding: 20px;
-      background: linear-gradient(135deg, #00f2fe, #4facfe);
-      color: #fff;
+    :root{
+      --glass-bg: rgba(255,255,255,0.16);
+      --glass-stroke: rgba(255,255,255,0.35);
+      --txt: #0b1630;
+      --primary: #6f49ff;
+      --primary-2: #5536e6;
+      --ok: #2e7d32;
+      --warn: #f57c00;
     }
-    .container {
-      max-width: 1100px;
-      margin: auto;
-      background: rgba(255,255,255,0.15);
-      backdrop-filter: blur(12px);
-      border-radius: 15px;
-      padding: 20px;
-      box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+    *{box-sizing:border-box}
+    body{
+      margin:0;padding:24px;
+      font-family: "Cairo", system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: linear-gradient(135deg,#00f2fe,#4facfe);
+      color: var(--txt);
     }
-    h2 { text-align: center; }
-    input, select, button {
-      padding: 10px;
-      margin: 5px;
-      border-radius: 8px;
-      border: none;
+    .wrap{
+      max-width:1100px;margin:auto;
+      background: var(--glass-bg);
+      backdrop-filter: blur(14px);
+      border: 1px solid var(--glass-stroke);
+      border-radius:16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.18);
+      padding:20px;
     }
-    button {
-      background: #673ab7;
-      color: white;
-      cursor: pointer;
+    h1,h2,h3{margin:10px 0 12px}
+    .row{display:flex;flex-wrap:wrap;gap:12px}
+    .card{
+      flex:1 1 330px;min-width:300px;
+      background: rgba(255,255,255,0.22);
+      border:1px solid var(--glass-stroke);
+      border-radius:12px;padding:16px
     }
-    button:hover { background: #512da8; }
-    table {
-      width: 100%;
-      margin-top: 15px;
-      border-collapse: collapse;
+    input,select,button{
+      padding:10px 12px;border-radius:10px;border:1px solid var(--glass-stroke);
+      background: rgba(255,255,255,0.75);
+      font-size:14px
     }
-    th, td {
-      border: 1px solid rgba(255,255,255,0.3);
-      padding: 10px;
-      text-align: center;
-    }
-    .progress {
-      background: rgba(255,255,255,0.2);
-      border-radius: 20px;
-      overflow: hidden;
-      margin: 10px 0;
-    }
-    .progress-bar {
-      height: 20px;
-      background: #4caf50;
-      width: 0%;
-      transition: width 0.5s;
-    }
-    .task {
-      background: rgba(255,255,255,0.15);
-      padding: 10px;
-      border-radius: 8px;
-      margin: 5px 0;
-    }
+    button{background:var(--primary);color:#fff;border:none;cursor:pointer;transition:.2s}
+    button:hover{background:var(--primary-2)}
+    table{width:100%;border-collapse:collapse;margin-top:10px}
+    th,td{border:1px solid var(--glass-stroke);padding:10px;text-align:center;background:rgba(255,255,255,0.6)}
+    .progress{background:rgba(255,255,255,0.5);border-radius:30px;overflow:hidden}
+    .bar{height:18px;width:0;background:#2ecc71;transition:width .5s}
+    .task{background:rgba(255,255,255,0.7);padding:8px;border-radius:8px;margin:6px 0}
+    .muted{opacity:.7}
+    .actions button{margin:0 4px}
+    .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px}
+    .pill.ok{background:#e8f5e9;color:#1b5e20;border:1px solid #c8e6c9}
+    .pill.warn{background:#fff3e0;color:#e65100;border:1px solid #ffe0b2}
+    .hint{font-size:12px;opacity:.8;margin-top:6px}
   </style>
 </head>
 <body>
-<div class="container">
-  <h2>لوحة التحكم - الأدمن</h2>
+  <div class="wrap">
+    <h1>لوحة التحكم - الأدمن</h1>
 
-  <!-- إضافة موظف -->
-  <h3>➕ إضافة موظف</h3>
-  <input type="text" id="empName" placeholder="اسم الموظف">
-  <button onclick="addEmployee()">إضافة</button>
+    <div class="row">
+      <!-- إضافة موظف -->
+      <div class="card">
+        <h3>➕ إضافة موظف</h3>
+        <div class="row">
+          <input type="text" id="empName" placeholder="اسم الموظف" style="flex:1">
+          <button onclick="addEmployee()">إضافة</button>
+        </div>
+        <div class="hint">بعد الإضافة سيظهر رابط خاص للموظف.</div>
+      </div>
 
-  <!-- جدول الموظفين -->
-  <h3>👥 الموظفين</h3>
-  <table>
-    <thead>
-      <tr><th>الموظف</th><th>الرابط</th><th>الإجراءات</th></tr>
-    </thead>
-    <tbody id="empTable"></tbody>
-  </table>
+      <!-- إضافة مهام -->
+      <div class="card">
+        <h3>📝 إضافة مهام لموظف</h3>
+        <div class="row">
+          <select id="empSelect" style="flex:1"></select>
+          <input type="date" id="taskDate" style="flex:1">
+        </div>
+        <div id="taskInputs" class="row">
+          <input type="text" placeholder="أدخل مهمة" style="flex:1 1 100%">
+        </div>
+        <div class="row">
+          <button onclick="addTaskInput()">➕ حقل جديد</button>
+          <button onclick="saveTasks()">💾 حفظ المهام</button>
+        </div>
+      </div>
+    </div>
 
-  <!-- إضافة مهام -->
-  <h3>📝 إضافة مهام</h3>
-  <select id="empSelect"></select>
-  <input type="date" id="taskDate">
-  <div id="taskInputs">
-    <input type="text" placeholder="أدخل مهمة">
+    <!-- جدول الموظفين -->
+    <div class="card" style="margin-top:12px">
+      <h3>👥 الموظفون</h3>
+      <table>
+        <thead><tr><th>الموظف</th><th>الرابط</th><th>الإجراءات</th></tr></thead>
+        <tbody id="empTable"></tbody>
+      </table>
+      <div class="hint">إذا الرابط ما يفتح، تأكد أن ملف <b>employee.html</b> في <b>نفس المجلد</b> مع <b>admin.html</b>.</div>
+    </div>
+
+    <!-- المتابعة -->
+    <div class="card" style="margin-top:12px">
+      <h3>📊 متابعة مهام اليوم</h3>
+      <div class="row">
+        <select id="trackEmp" style="flex:1"></select>
+        <button onclick="trackTasks()">عرض</button>
+        <button onclick="downloadPDF()">📥 تحميل تقرير PDF</button>
+      </div>
+      <div class="progress" style="margin-top:12px"><div class="bar" id="progBar"></div></div>
+      <p id="progText" class="muted">0 / 0 مكتملة</p>
+      <div id="taskList"></div>
+    </div>
   </div>
-  <button onclick="addTaskInput()">➕ حقل جديد</button>
-  <button onclick="saveTasks()">💾 حفظ المهام</button>
-
-  <!-- متابعة -->
-  <h3>📊 متابعة المهام</h3>
-  <select id="trackEmp"></select>
-  <button onclick="trackTasks()">عرض</button>
-  <button onclick="downloadPDF()">📥 تحميل تقرير PDF</button>
-  <div id="taskProgress"></div>
-  <div id="taskList"></div>
-</div>
 
 <script>
+  // ===== Firebase =====
   const firebaseConfig = {
     apiKey: "AIzaSyA7KirsWgafKXPsQfFl3v6ssMaAb_zjTps",
     authDomain: "tasks-bce7f.firebaseapp.com",
@@ -114,85 +132,137 @@
     appId: "1:493499367071:web:c667a4666f1e84d8b32caa",
     measurementId: "G-HR305C8QHR"
   };
-
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
 
-  function addEmployee(){
-    const name = document.getElementById("empName").value.trim();
-    if(!name) return alert("⚠️ أدخل الاسم");
-    const newEmpRef = db.ref("employees").push();
-    newEmpRef.set({name:name,date:new Date().toISOString()})
-      .then(()=>{ alert("✅ تمت الإضافة"); document.getElementById("empName").value=""; })
-      .catch(e=>alert("❌ خطأ: "+e.message));
+  // ===== أدوات مساعدة =====
+  const localYMD = (d=new Date())=>{
+    const ms = d.getTime() - d.getTimezoneOffset()*60000;
+    return new Date(ms).toISOString().slice(0,10);
+  };
+
+  // بناء رابط الموظف بشكل "نسبي" من نفس المجلد – يصلح لكل المسارات
+  function buildEmployeeLink(empId){
+    // يبني employee.html داخل نفس فولدر admin.html
+    return new URL(`employee.html?emp=${empId}`, window.location.href).href;
   }
 
+  // ===== إضافة موظف =====
+  function addEmployee(){
+    const name = document.getElementById("empName").value.trim();
+    if(!name){ alert("⚠️ أدخل الاسم"); return; }
+    const ref = db.ref("employees").push();
+    ref.set({ name, createdAt: new Date().toISOString() })
+      .then(()=>{ alert("✅ تمت إضافة الموظف"); document.getElementById("empName").value=""; })
+      .catch(err=> alert("❌ خطأ: "+err.message));
+  }
+
+  // ===== تحميل الموظفين + تعبئة القوائم =====
   function loadEmployees(){
-    db.ref("employees").on("value", snapshot=>{
-      const data = snapshot.val();
-      const empTable=document.getElementById("empTable");
-      const empSelect=document.getElementById("empSelect");
-      const trackEmp=document.getElementById("trackEmp");
-      empTable.innerHTML=""; empSelect.innerHTML=""; trackEmp.innerHTML="";
+    db.ref("employees").on("value", snap=>{
+      const data = snap.val();
+      const empTable = document.getElementById("empTable");
+      const empSelect = document.getElementById("empSelect");
+      const trackEmp = document.getElementById("trackEmp");
+      empTable.innerHTML = ""; empSelect.innerHTML = ""; trackEmp.innerHTML = "";
+
       if(!data){
-        empTable.innerHTML="<tr><td colspan='3'>لا يوجد موظفين</td></tr>";
+        empTable.innerHTML = "<tr><td colspan='3'>لا يوجد موظفون بعد</td></tr>";
         return;
       }
-      for(let id in data){
-        const emp=data[id];
-        const link=window.location.origin+"/employee.html?emp="+id;
-        empTable.innerHTML+=`
+      Object.keys(data).forEach(id=>{
+        const emp = data[id];
+        const link = buildEmployeeLink(id);
+        empTable.innerHTML += `
           <tr>
             <td>${emp.name}</td>
-            <td><a href="${link}" target="_blank">${link}</a></td>
-            <td><button onclick="copyLink('${link}')">📋 نسخ</button> 
-            <button onclick="deleteEmp('${id}')">🗑 حذف</button></td>
+            <td style="word-break:break-all">
+              <a href="${link}" target="_blank">${link}</a>
+            </td>
+            <td class="actions">
+              <button onclick="copyLink('${link}')">📋 نسخ</button>
+              <button onclick="window.open('${link}','_blank')">🔗 فتح</button>
+              <button onclick="deleteEmp('${id}')">🗑 حذف</button>
+            </td>
           </tr>`;
-        empSelect.innerHTML+=`<option value="${id}">${emp.name}</option>`;
-        trackEmp.innerHTML+=`<option value="${id}">${emp.name}</option>`;
-      }
+        empSelect.innerHTML += `<option value="${id}">${emp.name}</option>`;
+        trackEmp.innerHTML += `<option value="${id}">${emp.name}</option>`;
+      });
     });
   }
   loadEmployees();
 
   function copyLink(link){ navigator.clipboard.writeText(link); alert("📋 تم نسخ الرابط"); }
-  function deleteEmp(id){ db.ref("employees/"+id).remove(); }
+  function deleteEmp(id){
+    if(confirm("تأكيد حذف الموظف وجميع مهامه؟")) db.ref("employees/"+id).remove();
+  }
 
-  function addTaskInput(){ document.getElementById("taskInputs").innerHTML+=`<input type="text" placeholder="أدخل مهمة">`; }
+  // ===== إضافة حقول مهام ديناميكية =====
+  function addTaskInput(){
+    const c = document.getElementById("taskInputs");
+    const input = document.createElement("input");
+    input.type = "text"; input.placeholder = "أدخل مهمة"; input.style.flex = "1 1 100%";
+    c.appendChild(input);
+  }
 
+  // ===== حفظ المهام (مصفوفة دائمة) =====
   function saveTasks(){
-    const empId=document.getElementById("empSelect").value;
-    const date=document.getElementById("taskDate").value;
-    const inputs=document.querySelectorAll("#taskInputs input");
-    const tasks=[];
-    inputs.forEach(inp=>{ if(inp.value) tasks.push({text:inp.value,status:"pending",delays:0}); });
-    if(tasks.length>0){
-      db.ref("tasks/"+empId+"/"+date).set(tasks);
-      alert("✅ تم حفظ المهام");
-      document.getElementById("taskInputs").innerHTML='<input type="text" placeholder="أدخل مهمة">';
-    }
+    const empId = document.getElementById("empSelect").value;
+    const date = document.getElementById("taskDate").value;
+    if(!empId || !date){ alert("⚠️ اختر موظف وتاريخ"); return; }
+
+    const inputs = [...document.querySelectorAll("#taskInputs input")];
+    let tasks = inputs.map(inp => inp.value.trim()).filter(Boolean).map(t => ({text:t, status:"pending", delays:0}));
+    if(tasks.length===0){ alert("⚠️ أدخل مهمة واحدة على الأقل"); return; }
+
+    // خزّن كمصفوفة
+    db.ref(`tasks/${empId}/${date}`).set(tasks)
+      .then(()=>{
+        alert("✅ تم حفظ المهام");
+        document.getElementById("taskInputs").innerHTML = `<input type="text" placeholder="أدخل مهمة" style="flex:1 1 100%">`;
+      })
+      .catch(err=> alert("❌ خطأ: "+err.message));
+  }
+
+  // ===== متابعة مهام اليوم =====
+  function asArray(value){
+    if(Array.isArray(value)) return value;
+    if(value && typeof value === 'object') return Object.values(value);
+    return [];
   }
 
   function trackTasks(){
-    const empId=document.getElementById("trackEmp").value;
-    const today=new Date().toISOString().split("T")[0];
-    db.ref("tasks/"+empId+"/"+today).once("value",snap=>{
-      const tasks=snap.val()||[];
-      let done=tasks.filter(t=>t.status==="done").length;
-      let total=tasks.length;
-      let percent=total? (done/total*100):0;
-      document.getElementById("taskProgress").innerHTML=`
-        <div class="progress"><div class="progress-bar" style="width:${percent}%"></div></div>
-        <p>${done} / ${total} مكتملة</p>`;
-      document.getElementById("taskList").innerHTML=tasks.map(t=>`<div class="task">${t.text} - ${t.status} (تأجيل:${t.delays})</div>`).join("");
+    const empId = document.getElementById("trackEmp").value;
+    const today = localYMD(); // تاريخ محلي
+    db.ref(`tasks/${empId}/${today}`).once("value", snap=>{
+      let tasks = asArray(snap.val());
+      let done = tasks.filter(t=>t.status==="done").length;
+      let total = tasks.length;
+      let percent = total? Math.round(done/total*100) : 0;
+
+      document.getElementById("progBar").style.width = percent+"%";
+      document.getElementById("progText").innerHTML = `${done} / ${total} مكتملة`;
+
+      document.getElementById("taskList").innerHTML = tasks.map(t=>{
+        const badge = t.delays>0 ? `<span class="pill warn">تأجيل: ${t.delays}</span>` : `<span class="pill ok">جديد</span>`;
+        return `<div class="task">${t.text} &nbsp; ${badge} &nbsp; <span class="muted">(${t.status})</span></div>`;
+      }).join("");
     });
   }
 
+  // ===== تقرير PDF سريع =====
   function downloadPDF(){
     const { jsPDF } = window.jspdf;
-    const doc=new jsPDF();
-    doc.text("تقرير المهام",10,10);
-    doc.text(document.getElementById("taskList").innerText,10,20);
+    const doc = new jsPDF();
+    const empSel = document.getElementById("trackEmp");
+    const empName = empSel.options[empSel.selectedIndex]?.text || "موظف";
+    doc.setFont("helvetica","bold"); doc.setFontSize(14);
+    doc.text(`تقرير مهام اليوم - ${empName}`, 10, 12);
+    doc.setFont("helvetica","normal"); doc.setFontSize(12);
+
+    const list = document.getElementById("taskList").innerText || "لا توجد مهام";
+    let lines = doc.splitTextToSize(list, 180);
+    doc.text(lines, 10, 24);
     doc.save("tasks-report.pdf");
   }
 </script>
