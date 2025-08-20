@@ -1,77 +1,119 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8">
-  <title>مهام الموظف</title>
-  <style>
-    table { border-collapse: collapse; width: 100%; margin-top: 20px; }
-    th, td { border: 1px solid #ccc; padding: 10px; text-align: center; }
-  </style>
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getFirestore, doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyA7KirsWgafKXPsQfFl3v6ssMaAb_zjTps",
-      authDomain: "tasks-bce7f.firebaseapp.com",
-      projectId: "tasks-bce7f",
-      storageBucket: "tasks-bce7f.firebasestorage.app",
-      messagingSenderId: "493499367071",
-      appId: "1:493499367071:web:c667a4666f1e84d8b32caa",
-      measurementId: "G-HR305C8QHR"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-
-    let empRef, empData, token;
-
-    async function loadEmployee(){
-      const urlParams = new URLSearchParams(window.location.search);
-      token = urlParams.get("token");
-      if(!token){ document.body.innerHTML="رابط غير صالح"; return; }
-
-      empRef = doc(db,"links",token);
-      const snap = await getDoc(empRef);
-      if(snap.exists()){
-        empData = snap.data();
-        document.getElementById("welcome").innerText = "مرحباً " + empData.name;
-        renderTasks();
-      } else {
-        document.body.innerHTML="الرابط غير موجود";
-      }
-    }
-
-    async function toggleTask(index){
-      empData.tasks[index].done = !empData.tasks[index].done;
-      await updateDoc(empRef,{ tasks: empData.tasks });
-      renderTasks();
-    }
-
-    function renderTasks(){
-      const tbody = document.getElementById("taskBody");
-      tbody.innerHTML = "";
-      empData.tasks.forEach((t,i)=>{
-        const row = `<tr>
-          <td>${i+1}</td>
-          <td>${t.text}</td>
-          <td><input type="checkbox" ${t.done?"checked":""} onclick="toggleTask(${i})"></td>
-        </tr>`;
-        tbody.innerHTML += row;
-      });
-    }
-
-    window.toggleTask = toggleTask;
-    loadEmployee();
-  </script>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>مهامي اليومية</title>
+<style>
+  :root{
+    --bg:#f2f5fa; --card:#ffffff; --shadow1:#cfd8e3; --shadow2:#ffffff;
+    --text:#0f172a; --muted:#64748b; --ok:#16a34a; --accent:#2563eb; --radius:18px;
+  }
+  *{box-sizing:border-box;font-family:system-ui,Arial}
+  body{margin:0;background:var(--bg);color:var(--text);padding:22px}
+  .wrap{max-width:700px;margin:auto}
+  .card{
+    background:var(--card); border-radius:var(--radius); padding:16px;
+    box-shadow: 10px 10px 20px var(--shadow1), -10px -10px 20px var(--shadow2);
+  }
+  h1{margin:0 0 8px}
+  .muted{color:var(--muted);font-size:13px}
+  .task{display:flex;justify-content:space-between;align-items:center;padding:12px;border-radius:14px;background:#f8fafc;margin:10px 0}
+  .task.done span{text-decoration:line-through;opacity:.6}
+  .progress{height:12px;background:#e5e7eb;border-radius:999px;overflow:hidden;margin-top:6px}
+  .progress>div{height:100%;background:var(--ok);width:0%}
+  input,button,select{width:100%;padding:12px;border:none;border-radius:12px;background:#f6f9fc;outline:none;
+    box-shadow: inset 6px 6px 12px #d5dde6, inset -6px -6px 12px #ffffff;}
+  button{cursor:pointer;font-weight:600}
+  button.primary{background:var(--accent);color:#fff;box-shadow:none}
+  .row{display:grid;gap:10px}
+  @media(min-width:600px){ .row-2{grid-template-columns:1fr 1fr} }
+</style>
 </head>
 <body>
-  <h2 id="welcome">جاري تحميل البيانات...</h2>
-  <table>
-    <thead>
-      <tr><th>#</th><th>المهمة</th><th>إكمال</th></tr>
-    </thead>
-    <tbody id="taskBody"></tbody>
-  </table>
+<div class="wrap">
+  <div class="card">
+    <h1 id="emp-name">مهامي اليومية</h1>
+    <div class="muted" id="sub">—</div>
+    <div class="row row-2" style="margin-top:12px">
+      <input type="date" id="date"/>
+      <button class="primary" id="btn-date">عرض مهام التاريخ</button>
+    </div>
+    <div class="progress"><div id="bar"></div></div>
+  </div>
+
+  <div class="card" style="margin-top:14px">
+    <div id="list"></div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-analytics.js";
+import { getFirestore, doc, getDoc, collection, query, where, onSnapshot, updateDoc, orderBy } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyA7KirsWgafKXPsQfFl3v6ssMaAb_zjTps",
+  authDomain: "tasks-bce7f.firebaseapp.com",
+  projectId: "tasks-bce7f",
+  storageBucket: "tasks-bce7f.firebasestorage.app",
+  messagingSenderId: "493499367071",
+  appId: "1:493499367071:web:c667a4666f1e84d8b32caa",
+  measurementId: "G-HR305C8QHR"
+};
+const app = initializeApp(firebaseConfig); getAnalytics(app);
+const db = getFirestore(app);
+
+const params = new URLSearchParams(location.search);
+const token = params.get('token');
+if(!token){ document.body.innerHTML='<div class="wrap"><div class="card">رابط غير صالح</div></div>'; throw new Error('No token'); }
+
+const empName = document.getElementById('emp-name');
+const sub = document.getElementById('sub');
+const list = document.getElementById('list');
+const bar = document.getElementById('bar');
+const dateInput = document.getElementById('date');
+const btnDate = document.getElementById('btn-date');
+
+const today = new Date().toISOString().slice(0,10);
+dateInput.value = today;
+
+const linkDoc = await getDoc(doc(db,'links',token));
+if(!linkDoc.exists()){ document.body.innerHTML='<div class="wrap"><div class="card">الرابط غير موجود</div></div>'; throw new Error('link not found'); }
+
+const name = linkDoc.data().name || '—';
+empName.textContent = `الموظف: ${name}`;
+sub.textContent = `التاريخ: ${today}`;
+
+let unSub=null;
+function listen(dateStr){
+  if(unSub) unSub();
+  sub.textContent = `التاريخ: ${dateStr}`;
+  const q = query(collection(db,'links',token,'tasks'), where('date','==',dateStr), orderBy('createdAt','asc'));
+  unSub = onSnapshot(q, (snap)=>{
+    list.innerHTML='';
+    let total=0, done=0;
+    snap.forEach(d=>{
+      const t=d.data(); if(t.deleted) return;
+      total++; if(t.done) done++;
+      const row=document.createElement('div');
+      row.className='task' + (t.done?' done':'');
+      row.innerHTML = `
+        <span>${t.text}</span>
+        <input type="checkbox" ${t.done?'checked':''} />
+      `;
+      row.querySelector('input').onchange = async (e)=>{
+        await updateDoc(doc(db,'links',token,'tasks',d.id),{done: e.target.checked});
+      };
+      list.appendChild(row);
+    });
+    const pct = total ? Math.round((done/total)*100) : 0;
+    bar.style.width = pct+'%';
+  });
+}
+listen(today);
+
+btnDate.onclick = ()=> listen(dateInput.value || today);
+</script>
 </body>
 </html>
