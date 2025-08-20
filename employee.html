@@ -1,66 +1,73 @@
 <!DOCTYPE html>
-<html lang="ar">
+<html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
   <title>مهامي - الموظف</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+  <!-- jsPDF -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
   <style>
-    body {
-      margin: 0;
-      padding: 0;
-      font-family: 'Cairo', sans-serif;
-      background: linear-gradient(135deg, #4facfe, #00f2fe);
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+    :root{
+      --glass: rgba(255,255,255,0.2);
+      --stroke: rgba(255,255,255,0.35);
     }
-    .container {
-      width: 95%;
-      max-width: 600px;
-      background: rgba(255,255,255,0.2);
-      backdrop-filter: blur(15px);
-      border-radius: 15px;
-      padding: 20px;
-      box-shadow: 0 8px 30px rgba(0,0,0,0.2);
-      color: #fff;
-      text-align: center;
+    *{box-sizing:border-box}
+    body{
+      margin:0;min-height:100vh;
+      display:flex;align-items:center;justify-content:center;
+      font-family:"Cairo",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+      background: linear-gradient(135deg,#4facfe,#00f2fe);
+      color:#fff;
     }
-    h2 { margin-bottom: 10px; }
-    button {
-      margin: 5px;
-      padding: 10px;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
+    .card{
+      width:95%;max-width:620px;padding:20px;border-radius:16px;
+      background: var(--glass); backdrop-filter: blur(15px);
+      border:1px solid var(--stroke);
+      box-shadow: 0 20px 60px rgba(0,0,0,.25);
+      text-align:center;
     }
-    .pdf-btn { background: #2196f3; color: white; }
-    .progress { background: rgba(255,255,255,0.2); border-radius: 20px; overflow: hidden; margin: 15px 0; }
-    .progress-bar { height: 20px; background: #4caf50; width: 0%; transition: width 0.5s; }
-    .task { background: rgba(255,255,255,0.15); margin: 10px 0; padding: 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; }
-    .task.done { background: rgba(76,175,80,0.5); text-decoration: line-through; }
-    .done-btn { background: #4caf50; color:white; }
-    .delay-btn { background: #ff9800; color:white; }
-    .delays { font-size: 12px; color: #ffd54f; }
-    #toast { position: fixed; bottom: 20px; right: 20px; background: rgba(0,0,0,0.7); color: #fff; padding: 10px 20px; border-radius: 8px; display: none; }
+    h2{margin:6px 0 10px}
+    .row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+    button{
+      padding:10px 12px;border-radius:10px;border:none;cursor:pointer
+    }
+    .pdf-btn{background:#2196f3;color:#fff}
+    .progress{background: rgba(255,255,255,0.3);border-radius:30px;overflow:hidden;margin:12px 0}
+    .bar{height:18px;background:#4caf50;width:0;transition:width .5s}
+    .section-title{margin:10px 0 6px}
+    .task{
+      background: rgba(255,255,255,0.16); padding:12px;border-radius:10px;
+      display:flex;align-items:center;justify-content:space-between;margin:8px 0
+    }
+    .task.done{background: rgba(76,175,80,0.5); text-decoration: line-through}
+    .left button{margin-inline-start:6px}
+    .done-btn{background:#4caf50;color:#fff}
+    .delay-btn{background:#ff9800;color:#fff}
+    .delays{font-size:12px;color:#ffe082;margin-inline-start:6px}
+    #toast{position:fixed;bottom:18px;right:18px;background:rgba(0,0,0,.75);padding:10px 14px;border-radius:10px;display:none}
   </style>
 </head>
 <body>
-<div class="container">
-  <h2 id="empName">مهامي</h2>
-  <button class="pdf-btn" onclick="downloadPDF()">📥 تحميل تقرير PDF</button>
-  <div class="progress"><div class="progress-bar" id="progressBar"></div></div>
-  <p id="progressText">0 / 0 مكتملة</p>
-  <h3>📌 مهام اليوم</h3>
-  <div id="todayTasks"></div>
-  <h3>⏳ مهام مؤجلة</h3>
-  <div id="delayedTasks"></div>
-</div>
-<div id="toast"></div>
+  <div class="card">
+    <h2 id="empName">مهامي</h2>
+    <div class="row"><button class="pdf-btn" onclick="downloadPDF()">📥 تحميل تقرير PDF</button></div>
+    <div class="progress"><div class="bar" id="prog"></div></div>
+    <p id="stat">0 / 0 مكتملة</p>
+
+    <h3 class="section-title">📌 مهام اليوم</h3>
+    <div id="today"></div>
+
+    <h3 class="section-title">⏳ مهام مؤجلة</h3>
+    <div id="delayed"></div>
+  </div>
+  <div id="toast"></div>
 
 <script>
+  // ===== Firebase =====
   const firebaseConfig = {
     apiKey: "AIzaSyA7KirsWgafKXPsQfFl3v6ssMaAb_zjTps",
     authDomain: "tasks-bce7f.firebaseapp.com",
@@ -71,72 +78,127 @@
     appId: "1:493499367071:web:c667a4666f1e84d8b32caa",
     measurementId: "G-HR305C8QHR"
   };
-
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
 
-  const urlParams = new URLSearchParams(window.location.search);
-  const empId = urlParams.get("emp");
+  // ===== Helpers =====
+  const q = new URLSearchParams(location.search);
+  const empId = q.get("emp");
+  const localYMD = (d=new Date())=>{
+    const ms = d.getTime() - d.getTimezoneOffset()*60000;
+    return new Date(ms).toISOString().slice(0,10);
+  };
+  const asArray = v => Array.isArray(v) ? v : (v && typeof v==="object" ? Object.values(v) : []);
 
-  if(!empId){ document.body.innerHTML="<h2 style='color:white'>❌ رابط غير صحيح</h2>"; }
-  else { loadEmployee(empId); }
+  const toast = msg => {
+    const t = document.getElementById("toast");
+    t.textContent = msg; t.style.display="block"; setTimeout(()=>t.style.display="none",2500);
+  };
 
-  function showToast(msg){ const t=document.getElementById("toast"); t.innerText=msg; t.style.display="block"; setTimeout(()=>t.style.display="none",3000); }
+  if(!empId){
+    document.body.innerHTML = "<h2 style='color:white'>❌ رابط الموظف غير صحيح</h2>";
+  }else{
+    init(empId);
+  }
 
-  function loadEmployee(empId){
-    db.ref("employees/"+empId).once("value",snap=>{
-      if(snap.exists()){ document.getElementById("empName").innerText="👤 "+snap.val().name; }
+  function init(id){
+    // اسم الموظف
+    db.ref(`employees/${id}`).once("value", s=>{
+      if(s.exists()) document.getElementById("empName").textContent = "👤 " + (s.val().name || "موظف");
     });
-    const today=new Date().toISOString().split("T")[0];
-    db.ref("tasks/"+empId+"/"+today).on("value",snap=>{
-      renderTasks(snap.val()||[], empId, today);
+
+    // مهام اليوم (تاريخ محلي)
+    const today = localYMD();
+    db.ref(`tasks/${id}/${today}`).on("value", s=>{
+      const tasks = asArray(s.val());
+      render(tasks, id, today);
     });
   }
 
-  function renderTasks(tasks, empId, date){
-    const todayContainer=document.getElementById("todayTasks");
-    const delayedContainer=document.getElementById("delayedTasks");
-    todayContainer.innerHTML=""; delayedContainer.innerHTML="";
-    let doneCount=0;
-    tasks.forEach((task,i)=>{
-      if(task.status==="done") doneCount++;
-      const div=document.createElement("div");
-      div.className="task "+(task.status==="done"?"done":"");
-      div.innerHTML=`
-        <span>${task.text} <span class="delays">${task.delays>0?"(تأجيل:"+task.delays+")":""}</span></span>
-        <div>
-          <button class="done-btn" onclick="finishTask('${empId}','${date}',${i})">✔</button>
-          <button class="delay-btn" onclick="delayTask('${empId}','${date}',${i})">⏳</button>
-        </div>`;
-      if(task.delays>0) delayedContainer.appendChild(div);
-      else todayContainer.appendChild(div);
+  function render(tasks, id, date){
+    const todayEl = document.getElementById("today");
+    const delayedEl = document.getElementById("delayed");
+    todayEl.innerHTML = ""; delayedEl.innerHTML = "";
+
+    let done = 0;
+    tasks.forEach((t, i)=>{
+      if(t.status==="done") done++;
+      const row = document.createElement("div");
+      row.className = "task " + (t.status==="done"?"done":"");
+      row.innerHTML = `
+        <span>${t.text} <span class="delays">${t.delays>0? "(تأجيل: "+t.delays+")" : ""}</span></span>
+        <div class="left">
+          <button class="done-btn" onclick="finishTask('${id}','${date}',${i})">✔</button>
+          <button class="delay-btn" onclick="delayTask('${id}','${date}',${i})">⏳</button>
+        </div>
+      `;
+      (t.delays>0 ? delayedEl : todayEl).appendChild(row);
     });
-    let percent=tasks.length?(doneCount/tasks.length*100):0;
-    document.getElementById("progressBar").style.width=percent+"%";
-    document.getElementById("progressText").innerText=`${doneCount} / ${tasks.length} مكتملة`;
+
+    const total = tasks.length;
+    const pct = total? Math.round(done/total*100) : 0;
+    document.getElementById("prog").style.width = pct+"%";
+    document.getElementById("stat").textContent = `${done} / ${total} مكتملة`;
   }
 
-  function finishTask(empId,date,index){ db.ref("tasks/"+empId+"/"+date+"/"+index+"/status").set("done"); showToast("✅ تم الإنجاز"); }
-  function delayTask(empId,date,index){
-    db.ref("tasks/"+empId+"/"+date).once("value",snap=>{
-      let tasks=snap.val()||[];
-      let task=tasks[index]; task.status="pending"; task.delays=(task.delays||0)+1;
-      let tomorrow=new Date(date); tomorrow.setDate(tomorrow.getDate()+1);
-      let next=tomorrow.toISOString().split("T")[0];
-      db.ref("tasks/"+empId+"/"+next).push(task);
-      tasks.splice(index,1);
-      db.ref("tasks/"+empId+"/"+date).set(tasks);
-      showToast("⏳ تم تأجيل المهمة");
+  // حفظ "تم" على نفس العنصر بالمصفوفة
+  function finishTask(empId, date, index){
+    db.ref(`tasks/${empId}/${date}`).once("value", s=>{
+      let arr = asArray(s.val());
+      if(!arr[index]) return;
+      arr[index].status = "done";
+      db.ref(`tasks/${empId}/${date}`).set(arr);
+      toast("✅ تم إنجاز المهمة");
     });
   }
 
+  // تأجيل يحافظ على بُنية المصفوفة في اليومين
+  function delayTask(empId, date, index){
+    const next = localYMD(new Date(new Date(date).getTime()+24*60*60*1000));
+
+    // حمّل مهام اليوم الحالي
+    db.ref(`tasks/${empId}/${date}`).once("value", s=>{
+      let today = asArray(s.val());
+      if(!today[index]) return;
+
+      // حضّر المهمة المؤجلة
+      let task = today[index];
+      task.status = "pending";
+      task.delays = (task.delays||0) + 1;
+
+      // حمّل مهام الغد كمصفوفة ثم أضف إليها المهمة
+      db.ref(`tasks/${empId}/${next}`).once("value", s2=>{
+        let nextArr = asArray(s2.val());
+        nextArr.push(task);
+
+        // اكتب الغد كمصفوفة ثم حدّث اليوم بعد إزالة المهمة
+        Promise.all([
+          db.ref(`tasks/${empId}/${next}`).set(nextArr),
+          (today.splice(index,1), db.ref(`tasks/${empId}/${date}`).set(today))
+        ]).then(()=> toast("⏳ تم تأجيل المهمة لليوم التالي"));
+      });
+    });
+  }
+
+  // PDF بسيط من محتويات الصفحة
   function downloadPDF(){
     const { jsPDF } = window.jspdf;
-    const doc=new jsPDF();
-    doc.text("تقرير مهامي",10,10);
-    let tasks=document.querySelectorAll(".task");
-    let y=20;
-    tasks.forEach(t=>{ doc.text(t.innerText,10,y); y+=10; });
+    const doc = new jsPDF();
+    const title = document.getElementById("empName").innerText || "مهامي";
+    doc.setFont("helvetica","bold"); doc.setFontSize(14);
+    doc.text(title, 10, 12);
+    doc.setFont("helvetica","normal"); doc.setFontSize(12);
+
+    let y = 22;
+    const blocks = [...document.querySelectorAll(".task")].map(el=>el.innerText);
+    if(blocks.length===0){ doc.text("لا توجد مهام اليوم.", 10, y); }
+    else{
+      blocks.forEach(line=>{
+        const chunk = doc.splitTextToSize(line, 180);
+        doc.text(chunk, 10, y);
+        y += 8 + chunk.length*6;
+      });
+    }
     doc.save("my-tasks.pdf");
   }
 </script>
