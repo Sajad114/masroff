@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>مهام الموظف</title>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyA7KirsWgafKXPsQfFl3v6ssMaAb_zjTps",
+      authDomain: "tasks-bce7f.firebaseapp.com",
+      projectId: "tasks-bce7f",
+      storageBucket: "tasks-bce7f.firebasestorage.app",
+      messagingSenderId: "493499367071",
+      appId: "1:493499367071:web:c667a4666f1e84d8b32caa",
+      measurementId: "G-HR305C8QHR"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    async function loadEmployee(){
+      const urlParams = new URLSearchParams(window.location.search);
+      const token = urlParams.get("token");
+      if(!token){ document.body.innerHTML="رابط غير صالح"; return; }
+
+      const snap = await getDoc(doc(db,"links",token));
+      if(snap.exists()){
+        const data = snap.data();
+        document.getElementById("welcome").innerText = "مرحباً " + data.name;
+      } else {
+        document.body.innerHTML="الرابط غير موجود";
+      }
+    }
+
+    loadEmployee();
+  </script>
+</head>
+<body>
+  <h2 id="welcome">جاري تحميل البيانات...</h2>
+</body>
+</html>
