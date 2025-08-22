@@ -1,127 +1,226 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8">
-  <title>لوحة التحكم - الأدمن</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <!-- Firebase -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
-  <!-- jsPDF لتقارير PDF -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>لوحة الإدارة - نظام المهام</title>
 
-  <style>
-    :root{
-      --glass-bg: rgba(255,255,255,0.16);
-      --glass-stroke: rgba(255,255,255,0.35);
-      --txt: #0b1630;
-      --primary: #6f49ff;
-      --primary-2: #5536e6;
-      --ok: #2e7d32;
-      --warn: #f57c00;
-    }
-    *{box-sizing:border-box}
-    body{
-      margin:0;padding:24px;
-      font-family: "Cairo", system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-      background: linear-gradient(135deg,#00f2fe,#4facfe);
-      color: var(--txt);
-    }
-    .wrap{
-      max-width:1100px;margin:auto;
-      background: var(--glass-bg);
-      backdrop-filter: blur(14px);
-      border: 1px solid var(--glass-stroke);
-      border-radius:16px;
-      box-shadow: 0 20px 60px rgba(0,0,0,.18);
-      padding:20px;
-    }
-    h1,h2,h3{margin:10px 0 12px}
-    .row{display:flex;flex-wrap:wrap;gap:12px}
-    .card{
-      flex:1 1 330px;min-width:300px;
-      background: rgba(255,255,255,0.22);
-      border:1px solid var(--glass-stroke);
-      border-radius:12px;padding:16px
-    }
-    input,select,button{
-      padding:10px 12px;border-radius:10px;border:1px solid var(--glass-stroke);
-      background: rgba(255,255,255,0.75);
-      font-size:14px
-    }
-    button{background:var(--primary);color:#fff;border:none;cursor:pointer;transition:.2s}
-    button:hover{background:var(--primary-2)}
-    table{width:100%;border-collapse:collapse;margin-top:10px}
-    th,td{border:1px solid var(--glass-stroke);padding:10px;text-align:center;background:rgba(255,255,255,0.6)}
-    .progress{background:rgba(255,255,255,0.5);border-radius:30px;overflow:hidden}
-    .bar{height:18px;width:0;background:#2ecc71;transition:width .5s}
-    .task{background:rgba(255,255,255,0.7);padding:8px;border-radius:8px;margin:6px 0}
-    .muted{opacity:.7}
-    .actions button{margin:0 4px}
-    .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px}
-    .pill.ok{background:#e8f5e9;color:#1b5e20;border:1px solid #c8e6c9}
-    .pill.warn{background:#fff3e0;color:#e65100;border:1px solid #ffe0b2}
-    .hint{font-size:12px;opacity:.8;margin-top:6px}
-  </style>
+<!-- Firebase v8 -->
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+<style>
+  :root{
+    --bg:#0f1420;--panel:#121a2a;--glass:rgba(255,255,255,.06);
+    --text:#e8eefb;--muted:#a9b4c7;--brand:#55c2ff;--brand-2:#6affc2;
+    --ok:#33d17a;--warn:#ffb545;--danger:#ff6b6b;--line:rgba(255,255,255,.12);
+    --radius:14px;--shadow:0 12px 40px rgba(0,0,0,.35)
+  }
+  *{box-sizing:border-box} html,body{height:100%}
+  body{
+    margin:0;background:linear-gradient(160deg,#0b1220,#0a1730 60%,#09192f);
+    color:var(--text);font-family:"Tajawal",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  }
+
+  /* Header */
+  header{
+    position:fixed;inset:0 0 auto 0;height:64px;display:flex;align-items:center;gap:12px;
+    padding:0 16px;background:rgba(8,14,26,.6);backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line);z-index:1001
+  }
+  .menu-btn{font-size:22px;line-height:1;padding:10px 12px;border:none;cursor:pointer;border-radius:10px;
+    color:#081019;background:linear-gradient(135deg,var(--brand),var(--brand-2));font-weight:700}
+  .title{font-weight:800;letter-spacing:.2px}
+
+  /* Sidebar (hidden by default; slide-in) */
+  .sidebar{
+    position:fixed;top:0;right:-280px;height:100%;width:260px;padding:18px;
+    background:rgba(18,26,42,.9);backdrop-filter:blur(12px);border-left:1px solid var(--line);
+    transition:right .28s ease;z-index:1002
+  }
+  .sidebar.active{right:0}
+  .side-h{margin:70px 0 10px;color:var(--muted);font-weight:700}
+  .nav-btn{
+    width:100%;text-align:right;padding:12px;border:none;border-radius:10px;margin:6px 0;cursor:pointer;
+    color:var(--text);background:transparent;border:1px solid var(--line);transition:.2s
+  }
+  .nav-btn:hover{background:var(--glass)}
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;z-index:1000}
+  .overlay.active{display:block}
+
+  /* Content */
+  .container{max-width:1200px;margin:96px auto 60px;padding:0 16px}
+  .section{display:none}
+  .section.active{display:block}
+
+  /* Cards / stats */
+  .grid{display:grid;gap:16px}
+  .grid.cols-3{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+  .card{
+    background:var(--glass);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);
+    padding:18px
+  }
+  .clickable{cursor:pointer;transition:.2s}
+  .clickable:hover{transform:translateY(-2px)}
+  .stat-val{font-size:32px;font-weight:900;margin:6px 0;color:#fff}
+  .badge{display:inline-block;padding:4px 10px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+
+  /* Forms + Table */
+  .row{display:flex;flex-wrap:wrap;gap:10px}
+  input,select,button,textarea{
+    background:#0e1524;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px 12px;outline:none
+  }
+  input::placeholder{color:#7f8aa1}
+  button.primary{background:linear-gradient(135deg,var(--brand),var(--brand-2));color:#081019;border:none;font-weight:800}
+  button.ghost{background:transparent}
+  button.warn{background:var(--warn);border:none;color:#141b2b;font-weight:800}
+  button.danger{background:var(--danger);border:none;color:#fff;font-weight:800}
+
+  table{width:100%;border-collapse:collapse;margin-top:12px;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  th,td{padding:11px;border-bottom:1px solid var(--line);text-align:center}
+  th{background:rgba(255,255,255,.06);color:#bfe6ff}
+  tr:hover{background:rgba(255,255,255,.04)}
+  .actions button{margin:0 4px}
+
+  /* Pills */
+  .pill{padding:6px 10px;border-radius:999px;border:1px solid var(--line);display:inline-flex;gap:6px;align-items:center}
+
+  /* Toast */
+  .toast{position:fixed;top:80px;left:50%;transform:translateX(-50%);
+         background:#101a2d;border:1px solid var(--line);padding:10px 14px;border-radius:10px;display:none;z-index:2000}
+  .toast.show{display:block;animation:fade .2s}
+  @keyframes fade{from{opacity:.6;transform:translate(-50%,-6px)}to{opacity:1;transform:translate(-50%,0)}}
+
+  /* Section headers */
+  h2{margin:6px 0 12px}
+</style>
 </head>
 <body>
-  <div class="wrap">
-    <h1>لوحة التحكم - الأدمن</h1>
 
-    <div class="row">
-      <!-- إضافة موظف -->
-      <div class="card">
-        <h3>➕ إضافة موظف</h3>
-        <div class="row">
-          <input type="text" id="empName" placeholder="اسم الموظف" style="flex:1">
-          <button onclick="addEmployee()">إضافة</button>
-        </div>
-        <div class="hint">بعد الإضافة سيظهر رابط خاص للموظف.</div>
+<header>
+  <button class="menu-btn" id="menuBtn">☰</button>
+  <div class="title">لوحة الإدارة — نظام إدارة المهام</div>
+</header>
+
+<!-- Sidebar -->
+<aside class="sidebar" id="sidebar">
+  <div class="side-h">الأقسام</div>
+  <button class="nav-btn" onclick="showSection('employees')">👥 إدارة الموظفين</button>
+  <button class="nav-btn" onclick="showSection('tasks')">📝 إدارة المهام</button>
+  <button class="nav-btn" onclick="showSection('delayed')">⏳ المهام المؤجلة</button>
+  <button class="nav-btn" onclick="showSection('stats')">📊 الإحصاءات</button>
+
+  <div class="side-h">أدوات</div>
+  <button class="nav-btn" onclick="exportEmployees()">⬇️ تصدير الموظفين (CSV)</button>
+  <button class="nav-btn" onclick="exportTasks()">⬇️ تصدير المهام (CSV)</button>
+</aside>
+<div class="overlay" id="overlay"></div>
+
+<div class="container">
+
+  <!-- 📌 الإحصاءات (تفاعلية) -->
+  <section id="stats" class="section active">
+    <div class="grid cols-3">
+      <div class="card clickable" onclick="showSection('employees')">
+        <div class="badge">الموظفون</div>
+        <div class="stat-val" id="statEmployees">0</div>
+        <div class="muted">اضغط للانتقال لجدول الموظفين</div>
       </div>
-
-      <!-- إضافة مهام -->
-      <div class="card">
-        <h3>📝 إضافة مهام لموظف</h3>
-        <div class="row">
-          <select id="empSelect" style="flex:1"></select>
-          <input type="date" id="taskDate" style="flex:1">
-        </div>
-        <div id="taskInputs" class="row">
-          <input type="text" placeholder="أدخل مهمة" style="flex:1 1 100%">
-        </div>
-        <div class="row">
-          <button onclick="addTaskInput()">➕ حقل جديد</button>
-          <button onclick="saveTasks()">💾 حفظ المهام</button>
-        </div>
+      <div class="card clickable" onclick="showSection('tasks')">
+        <div class="badge">مهام اليوم</div>
+        <div class="stat-val" id="statTasksToday">0</div>
+        <div class="muted">اضغط للانتقال لجدول المهام</div>
+      </div>
+      <div class="card clickable" onclick="showSection('delayed')">
+        <div class="badge">مؤجّلة</div>
+        <div class="stat-val" id="statDelayed">0</div>
+        <div class="muted">اضغط لعرض المؤجّلة وإعادة جدولتها</div>
       </div>
     </div>
 
-    <!-- جدول الموظفين -->
-    <div class="card" style="margin-top:12px">
-      <h3>👥 الموظفون</h3>
+    <div class="grid" style="margin-top:16px">
+      <div class="card">
+        <div class="row">
+          <div class="pill">🗓️ تاريخ اليوم: <b id="todayTxt" style="margin-inline-start:6px"></b></div>
+          <div class="pill">🏆 مجموع نقاط هذا الأسبوع: <b id="statPointsWeek" style="margin-inline-start:6px">0</b></div>
+          <div class="pill">⏱️ آخر تصفير: <b id="lastReset" style="margin-inline-start:6px">—</b></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 👥 إدارة الموظفين -->
+  <section id="employees" class="section">
+    <h2>👥 إدارة الموظفين</h2>
+    <div class="card">
+      <div class="row">
+        <input id="empName" placeholder="اسم الموظف" />
+        <button class="primary" onclick="addEmployee()">➕ إضافة موظف</button>
+        <input id="empSearch" placeholder="بحث..." oninput="filterEmployees()"/>
+      </div>
       <table>
-        <thead><tr><th>الموظف</th><th>الرابط</th><th>الإجراءات</th></tr></thead>
+        <thead>
+          <tr><th>الموظف</th><th>النقاط</th><th>رابط الموظف</th><th>إجراءات</th></tr>
+        </thead>
         <tbody id="empTable"></tbody>
       </table>
-      <div class="hint">إذا الرابط ما يفتح، تأكد أن ملف <b>employee.html</b> في <b>نفس المجلد</b> مع <b>admin.html</b>.</div>
+    </div>
+  </section>
+
+  <!-- 📝 إدارة المهام (إنشاء + عرض حسب التاريخ) -->
+  <section id="tasks" class="section">
+    <h2>📝 إدارة المهام</h2>
+    <div class="card">
+      <div class="row">
+        <select id="empSelect"></select>
+        <input type="date" id="taskDate"/>
+      </div>
+      <div id="taskFields" class="row" style="margin-top:6px">
+        <input class="taskInput" placeholder="أدخل مهمة"/>
+      </div>
+      <div class="row">
+        <button class="ghost" onclick="addTaskField()">➕ إضافة حقل</button>
+        <button class="primary" onclick="saveTasks()">💾 حفظ المهام</button>
+      </div>
     </div>
 
-    <!-- المتابعة -->
     <div class="card" style="margin-top:12px">
-      <h3>📊 متابعة مهام اليوم</h3>
       <div class="row">
-        <select id="trackEmp" style="flex:1"></select>
-        <button onclick="trackTasks()">عرض</button>
-        <button onclick="downloadPDF()">📥 تحميل تقرير PDF</button>
+        <select id="viewEmpFilter"></select>
+        <input type="date" id="viewDate" />
+        <button onclick="loadTasksTable()">تحديث</button>
       </div>
-      <div class="progress" style="margin-top:12px"><div class="bar" id="progBar"></div></div>
-      <p id="progText" class="muted">0 / 0 مكتملة</p>
-      <div id="taskList"></div>
+      <table>
+        <thead>
+          <tr><th>الموظف</th><th>التاريخ</th><th>عدد المهام</th><th>تفاصيل</th></tr>
+        </thead>
+        <tbody id="tasksTable"></tbody>
+      </table>
     </div>
-  </div>
+  </section>
+
+  <!-- ⏳ المهام المؤجلة -->
+  <section id="delayed" class="section">
+    <h2>⏳ المهام المؤجلة</h2>
+    <div class="card">
+      <div class="row">
+        <select id="delayedEmpFilter"></select>
+        <button onclick="loadDelayed()">تحديث</button>
+      </div>
+      <table>
+        <thead>
+          <tr><th>الموظف</th><th>المهمة</th><th>السبب</th><th>مرات التأجيل</th><th>التاريخ المقترح</th><th>إجراءات</th></tr>
+        </thead>
+        <tbody id="delayedTable"></tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<div id="toast" class="toast"></div>
 
 <script>
-  // ===== Firebase =====
+  /* ================= Firebase ================= */
   const firebaseConfig = {
     apiKey: "AIzaSyA7KirsWgafKXPsQfFl3v6ssMaAb_zjTps",
     authDomain: "tasks-bce7f.firebaseapp.com",
@@ -135,136 +234,308 @@
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
 
-  // ===== أدوات مساعدة =====
-  const localYMD = (d=new Date())=>{
-    const ms = d.getTime() - d.getTimezoneOffset()*60000;
-    return new Date(ms).toISOString().slice(0,10);
-  };
+  /* =============== Helpers =============== */
+  const $ = s => document.querySelector(s);
+  const $$ = s => document.querySelectorAll(s);
+  const todayStr = () => new Date().toISOString().slice(0,10);
+  const toast = (msg)=>{ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),1600); };
+  const EMP_REF = db.ref("employees");
+  const DAILY_REF = db.ref("tasksDaily");
+  const DELAYED_REF = db.ref("delayedTasks");
+  const META_REF = db.ref("meta");
 
-  // بناء رابط الموظف بشكل "نسبي" من نفس المجلد – يصلح لكل المسارات
-  function buildEmployeeLink(empId){
-    // يبني employee.html داخل نفس فولدر admin.html
-    return new URL(`employee.html?emp=${empId}`, window.location.href).href;
+  /* =============== Sidebar Toggle =============== */
+  const sidebar = $("#sidebar"), overlay=$("#overlay"), menuBtn=$("#menuBtn");
+  menuBtn.onclick = ()=>{ sidebar.classList.add("active"); overlay.classList.add("active"); }
+  overlay.onclick = ()=>{ sidebar.classList.remove("active"); overlay.classList.remove("active"); }
+  document.addEventListener("click",(e)=>{
+    if(!sidebar.contains(e.target) && !menuBtn.contains(e.target)) { sidebar.classList.remove("active"); overlay.classList.remove("active"); }
+  });
+
+  /* =============== Sections =============== */
+  function showSection(id){
+    $$(".section").forEach(s=>s.classList.remove("active"));
+    $("#"+id).classList.add("active");
+    if(id==="stats") updateStats();
+    if(id==="tasks") { fillEmpSelects(); }
+    if(id==="delayed") { fillEmpSelects(); loadDelayed(); }
+    if(id==="employees") {} // nothing
   }
 
-  // ===== إضافة موظف =====
+  /* =============== Employees CRUD =============== */
+  $("#todayTxt").textContent = todayStr();
+
   function addEmployee(){
-    const name = document.getElementById("empName").value.trim();
-    if(!name){ alert("⚠️ أدخل الاسم"); return; }
-    const ref = db.ref("employees").push();
-    ref.set({ name, createdAt: new Date().toISOString() })
-      .then(()=>{ alert("✅ تمت إضافة الموظف"); document.getElementById("empName").value=""; })
-      .catch(err=> alert("❌ خطأ: "+err.message));
+    const name = $("#empName").value.trim();
+    if(!name){ toast("⚠️ اكتب اسم الموظف"); return; }
+    const ref = EMP_REF.push();
+    ref.set({ name, points:0 }).then(()=>{
+      $("#empName").value="";
+      toast("✅ تم إضافة الموظف");
+    });
   }
 
-  // ===== تحميل الموظفين + تعبئة القوائم =====
-  function loadEmployees(){
-    db.ref("employees").on("value", snap=>{
-      const data = snap.val();
-      const empTable = document.getElementById("empTable");
-      const empSelect = document.getElementById("empSelect");
-      const trackEmp = document.getElementById("trackEmp");
-      empTable.innerHTML = ""; empSelect.innerHTML = ""; trackEmp.innerHTML = "";
+  function employeeLink(id){
+    // يشتغل إذا الملفين بنفس المجلد
+    return `${location.origin}/employee.html?emp=${id}`;
+  }
 
-      if(!data){
-        empTable.innerHTML = "<tr><td colspan='3'>لا يوجد موظفون بعد</td></tr>";
-        return;
+  function renderEmployees(data){
+    const tbody = $("#empTable"); tbody.innerHTML="";
+    const select = $("#empSelect"); const viewEmp = $("#viewEmpFilter"); const delayedEmp = $("#delayedEmpFilter");
+    select.innerHTML=""; viewEmp.innerHTML="<option value=''>الكل</option>"; delayedEmp.innerHTML="<option value=''>الكل</option>";
+
+    const query = ($("#empSearch").value||"").toLowerCase();
+    let count=0;
+    for(const id in data){
+      const emp = data[id]; const name = emp.name || "—";
+      if(query && !name.toLowerCase().includes(query)) continue;
+      count++;
+      const link = employeeLink(id);
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${name}</td>
+        <td><b>${emp.points||0}</b></td>
+        <td style="direction:ltr"><a href="${link}" target="_blank">${link}</a></td>
+        <td class="actions">
+          <button onclick="copyLink('${link}')">📋 نسخ</button>
+          <button class="danger" onclick="deleteEmp('${id}')">🗑 حذف</button>
+        </td>`;
+      tbody.appendChild(tr);
+
+      select.innerHTML += `<option value="${id}">${name}</option>`;
+      viewEmp.innerHTML += `<option value="${id}">${name}</option>`;
+      delayedEmp.innerHTML += `<option value="${id}">${name}</option>`;
+    }
+    $("#statEmployees").textContent = count;
+  }
+
+  function copyLink(link){ navigator.clipboard.writeText(link); toast("📎 تم نسخ الرابط"); }
+  function deleteEmp(id){
+    if(!confirm("تأكيد حذف الموظف وكافة مهامه؟")) return;
+    EMP_REF.child(id).remove();
+    DAILY_REF.child(id).remove();
+    DELAYED_REF.child(id).remove();
+  }
+
+  EMP_REF.on("value",s=>{ renderEmployees(s.val()||{}); });
+
+  function filterEmployees(){ EMP_REF.once("value").then(s=>renderEmployees(s.val()||{})); }
+
+  /* =============== Create & View Tasks =============== */
+  function addTaskField(){
+    const inp = document.createElement("input");
+    inp.className="taskInput"; inp.placeholder="أدخل مهمة";
+    $("#taskFields").appendChild(inp);
+  }
+
+  function fillEmpSelects(){
+    EMP_REF.once("value").then(s=>{
+      const data=s.val()||{};
+      const sel=$("#empSelect"); const viewEmp=$("#viewEmpFilter");
+      if(sel && sel.options.length<=0){ // already filled by render? skip
+        sel.innerHTML="";
+        for(const id in data) sel.innerHTML += `<option value="${id}">${data[id].name||"—"}</option>`;
       }
-      Object.keys(data).forEach(id=>{
-        const emp = data[id];
-        const link = buildEmployeeLink(id);
-        empTable.innerHTML += `
-          <tr>
-            <td>${emp.name}</td>
-            <td style="word-break:break-all">
-              <a href="${link}" target="_blank">${link}</a>
-            </td>
+      if(viewEmp && viewEmp.options.length<=1){
+        viewEmp.innerHTML="<option value=''>الكل</option>";
+        for(const id in data) viewEmp.innerHTML += `<option value="${id}">${data[id].name||"—"}</option>`;
+      }
+    });
+  }
+
+  function saveTasks(){
+    const empId = $("#empSelect").value;
+    const date = $("#taskDate").value || todayStr();
+    const tasks = [...$$(".taskInput")].map(i=>i.value.trim()).filter(Boolean);
+    if(!empId){ toast("⚠️ اختر موظف"); return; }
+    if(!tasks.length){ toast("⚠️ أدخل مهمة واحدة على الأقل"); return; }
+    const ref = DAILY_REF.child(`${empId}/${date}`);
+    const updates = {};
+    tasks.forEach(t=>{
+      const id = db.ref().push().key;
+      updates[id] = { text:t, status:"pending", delayCount:0, createdAt:Date.now() };
+    });
+    ref.update(updates).then(()=>{ toast("✅ تم حفظ المهام"); $("#taskFields").innerHTML=`<input class="taskInput" placeholder="أدخل مهمة"/>`; });
+  }
+
+  function loadTasksTable(){
+    const empFilter = $("#viewEmpFilter").value;
+    const date = $("#viewDate").value || todayStr();
+    const tbody = $("#tasksTable"); tbody.innerHTML="";
+    DAILY_REF.once("value").then(s=>{
+      const data=s.val()||{};
+      let total=0;
+      const rows=[];
+      for(const empId in data){
+        if(empFilter && empFilter!==empId) continue;
+        const byDate = data[empId][date];
+        if(!byDate) continue;
+        const count = Object.keys(byDate).length;
+        total += count;
+        rows.push({empId,date,count,details:Object.values(byDate).map(t=>t.text)});
+      }
+      rows.forEach(r=>{
+        const tr=document.createElement("tr");
+        tr.innerHTML = `<td>${r.empId}</td><td>${r.date}</td><td>${r.count}</td><td>${r.details.join(" • ")}</td>`;
+        tbody.appendChild(tr);
+      });
+      $("#statTasksToday").textContent = total;
+    });
+  }
+
+  /* =============== Delayed Tasks =============== */
+  function loadDelayed(){
+    const empFilter = $("#delayedEmpFilter").value;
+    const tbody = $("#delayedTable"); tbody.innerHTML="";
+    DELAYED_REF.once("value").then(s=>{
+      const data=s.val()||{};
+      let total=0;
+      const promises=[];
+      for(const empId in data){
+        if(empFilter && empFilter!==empId) continue;
+        for(const taskId in data[empId]){
+          total++;
+          const t = data[empId][taskId];
+          const tr=document.createElement("tr");
+          tr.innerHTML = `
+            <td>${empId}</td>
+            <td>${t.text||"—"}</td>
+            <td>${t.reason||"-"}</td>
+            <td>${t.delayCount||0}</td>
+            <td>${t.targetDate||"—"}</td>
             <td class="actions">
-              <button onclick="copyLink('${link}')">📋 نسخ</button>
-              <button onclick="window.open('${link}','_blank')">🔗 فتح</button>
-              <button onclick="deleteEmp('${id}')">🗑 حذف</button>
-            </td>
-          </tr>`;
-        empSelect.innerHTML += `<option value="${id}">${emp.name}</option>`;
-        trackEmp.innerHTML += `<option value="${id}">${emp.name}</option>`;
+              <input type="date" id="resched-${empId}-${taskId}" value="${(t.targetDate||"").slice(0,10)}"/>
+              <button class="primary" onclick="reschedule('${empId}','${taskId}')">📅 جدولة</button>
+              <button class="danger" onclick="deleteDelayed('${empId}','${taskId}')">🗑 حذف</button>
+            </td>`;
+          tbody.appendChild(tr);
+        }
+      }
+      $("#statDelayed").textContent = total;
+    });
+  }
+
+  function reschedule(empId, taskId){
+    const inp = document.getElementById(`resched-${empId}-${taskId}`);
+    const date = inp.value || todayStr();
+    DELAYED_REF.child(`${empId}/${taskId}`).once("value").then(s=>{
+      const t=s.val(); if(!t) return;
+      // أعدها لمهام اليوم المحدد
+      DAILY_REF.child(`${empId}/${date}/${taskId}`).set({
+        text:t.text, status:"pending", delayCount:(t.delayCount||0), createdAt:t.createdAt||Date.now()
+      });
+      // امسح من المؤجلة
+      DELAYED_REF.child(`${empId}/${taskId}`).remove().then(()=>{ toast("✅ تمت الجدولة"); loadDelayed(); loadTasksTable(); });
+    });
+  }
+
+  function deleteDelayed(empId, taskId){
+    if(!confirm("حذف المهمة المؤجلة؟")) return;
+    DELAYED_REF.child(`${empId}/${taskId}`).remove().then(()=>{ toast("🗑️ تم الحذف"); loadDelayed(); });
+  }
+
+  /* =============== Stats (live-ish) =============== */
+  function updateStats(){
+    $("#todayTxt").textContent = todayStr();
+
+    EMP_REF.once("value").then(s=>{
+      const emps = s.val()||{};
+      $("#statEmployees").textContent = Object.keys(emps).length;
+      // اجمع نقاط الأسبوع (تقريبية من points الحالية)
+      let sum=0; for(const id in emps) sum += +((emps[id].points)||0);
+      $("#statPointsWeek").textContent = sum;
+    });
+
+    // مهام اليوم
+    DAILY_REF.once("value").then(s=>{
+      const data=s.val()||{}; let totalToday=0;
+      const today=todayStr();
+      for(const emp in data){ if(data[emp][today]) totalToday += Object.keys(data[emp][today]).length; }
+      $("#statTasksToday").textContent = totalToday;
+    });
+
+    // مؤجلة
+    DELAYED_REF.once("value").then(s=>{
+      const data=s.val()||{}; let total=0;
+      for(const emp in data) total += Object.keys(data[emp]).length;
+      $("#statDelayed").textContent = total;
+    });
+
+    // آخر تصفير
+    META_REF.child("lastReset").once("value").then(s=>{
+      $("#lastReset").textContent = s.val() ? new Date(s.val()).toLocaleString() : "—";
+    });
+  }
+
+  /* =============== Weekly Reset (Wednesday 11 PM Asia/Baghdad) =============== */
+  // نعتمد وقت متصفح الأدمن. نضمن تشغيله مرة واحدة بالأسبوع عبر meta/lastReset.
+  function maybeWeeklyReset(){
+    const now = new Date();
+    // الأربعاء=3 حسب JS
+    const isWed = now.getDay() === 3;
+    const is11pm = now.getHours() === 23 && now.getMinutes() === 0;
+    if(!(isWed && is11pm)) return;
+
+    META_REF.child("lastReset").once("value").then(s=>{
+      const last = s.val() ? new Date(s.val()) : null;
+      // لا نعيد نفس الدقيقة
+      if(last && (now - new Date(last)) < 3600*1000) return;
+
+      // صفّر نقاط الجميع
+      EMP_REF.once("value").then(snap=>{
+        const updates = {};
+        snap.forEach(ch => { updates[`${ch.key}/points`] = 0; });
+        if(Object.keys(updates).length){
+          EMP_REF.update(updates).then(()=>{
+            META_REF.child("lastReset").set(now.toISOString());
+            toast("🔄 تم تصفير نقاط الموظفين لهذا الأسبوع");
+            updateStats();
+          });
+        }
       });
     });
   }
-  loadEmployees();
+  setInterval(maybeWeeklyReset, 60000); // دقيقة
 
-  function copyLink(link){ navigator.clipboard.writeText(link); alert("📋 تم نسخ الرابط"); }
-  function deleteEmp(id){
-    if(confirm("تأكيد حذف الموظف وجميع مهامه؟")) db.ref("employees/"+id).remove();
+  /* =============== Live binds =============== */
+  // حدّث الجداول تلقائياً
+  DAILY_REF.on("value", ()=>{ loadTasksTable(); updateStats(); });
+  DELAYED_REF.on("value", ()=>{ loadDelayed(); updateStats(); });
+
+  /* =============== Export CSV =============== */
+  function downloadCSV(filename, rows){
+    const process = r => r.map(v=>`"${String(v??'').replace(/"/g,'""')}"`).join(",");
+    const csv = "data:text/csv;charset=utf-8,\uFEFF" + rows.map(process).join("\n");
+    const a = document.createElement("a");
+    a.href = encodeURI(csv); a.download = filename; a.click();
   }
 
-  // ===== إضافة حقول مهام ديناميكية =====
-  function addTaskInput(){
-    const c = document.getElementById("taskInputs");
-    const input = document.createElement("input");
-    input.type = "text"; input.placeholder = "أدخل مهمة"; input.style.flex = "1 1 100%";
-    c.appendChild(input);
-  }
-
-  // ===== حفظ المهام (مصفوفة دائمة) =====
-  function saveTasks(){
-    const empId = document.getElementById("empSelect").value;
-    const date = document.getElementById("taskDate").value;
-    if(!empId || !date){ alert("⚠️ اختر موظف وتاريخ"); return; }
-
-    const inputs = [...document.querySelectorAll("#taskInputs input")];
-    let tasks = inputs.map(inp => inp.value.trim()).filter(Boolean).map(t => ({text:t, status:"pending", delays:0}));
-    if(tasks.length===0){ alert("⚠️ أدخل مهمة واحدة على الأقل"); return; }
-
-    // خزّن كمصفوفة
-    db.ref(`tasks/${empId}/${date}`).set(tasks)
-      .then(()=>{
-        alert("✅ تم حفظ المهام");
-        document.getElementById("taskInputs").innerHTML = `<input type="text" placeholder="أدخل مهمة" style="flex:1 1 100%">`;
-      })
-      .catch(err=> alert("❌ خطأ: "+err.message));
-  }
-
-  // ===== متابعة مهام اليوم =====
-  function asArray(value){
-    if(Array.isArray(value)) return value;
-    if(value && typeof value === 'object') return Object.values(value);
-    return [];
-  }
-
-  function trackTasks(){
-    const empId = document.getElementById("trackEmp").value;
-    const today = localYMD(); // تاريخ محلي
-    db.ref(`tasks/${empId}/${today}`).once("value", snap=>{
-      let tasks = asArray(snap.val());
-      let done = tasks.filter(t=>t.status==="done").length;
-      let total = tasks.length;
-      let percent = total? Math.round(done/total*100) : 0;
-
-      document.getElementById("progBar").style.width = percent+"%";
-      document.getElementById("progText").innerHTML = `${done} / ${total} مكتملة`;
-
-      document.getElementById("taskList").innerHTML = tasks.map(t=>{
-        const badge = t.delays>0 ? `<span class="pill warn">تأجيل: ${t.delays}</span>` : `<span class="pill ok">جديد</span>`;
-        return `<div class="task">${t.text} &nbsp; ${badge} &nbsp; <span class="muted">(${t.status})</span></div>`;
-      }).join("");
+  function exportEmployees(){
+    EMP_REF.once("value").then(s=>{
+      const data=s.val()||{}; const rows=[["id","name","points","link"]];
+      for(const id in data) rows.push([id, data[id].name||"", data[id].points||0, employeeLink(id)]);
+      downloadCSV(`employees_${todayStr()}.csv`, rows);
     });
   }
 
-  // ===== تقرير PDF سريع =====
-  function downloadPDF(){
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    const empSel = document.getElementById("trackEmp");
-    const empName = empSel.options[empSel.selectedIndex]?.text || "موظف";
-    doc.setFont("helvetica","bold"); doc.setFontSize(14);
-    doc.text(`تقرير مهام اليوم - ${empName}`, 10, 12);
-    doc.setFont("helvetica","normal"); doc.setFontSize(12);
-
-    const list = document.getElementById("taskList").innerText || "لا توجد مهام";
-    let lines = doc.splitTextToSize(list, 180);
-    doc.text(lines, 10, 24);
-    doc.save("tasks-report.pdf");
+  function exportTasks(){
+    const rows=[["empId","date","taskId","text","status","delayCount"]];
+    DAILY_REF.once("value").then(s=>{
+      const d=s.val()||{};
+      for(const emp in d) for(const date in d[emp]) for(const tid in d[emp][date]){
+        const t=d[emp][date][tid];
+        rows.push([emp,date,tid,t.text,t.status||"",t.delayCount||0]);
+      }
+      downloadCSV(`tasksDaily_${todayStr()}.csv`, rows);
+    });
   }
+
+  // أولي
+  updateStats();
+  // تعبئة جدول المهام الافتراضي لليوم
+  $("#viewDate").value = todayStr();
+  loadTasksTable();
 </script>
 </body>
 </html>
