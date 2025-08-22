@@ -1,183 +1,225 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8">
-  <title>مهامي اليومية</title>
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-  <style>
-    body {
-      font-family: 'Cairo', sans-serif;
-      margin: 0;
-      background: linear-gradient(135deg,#4facfe,#00f2fe);
-      display: flex;
-      justify-content: center;
-      align-items: flex-start;
-      min-height: 100vh;
-      padding: 40px 20px;
-    }
-    .container {
-      width: 100%;
-      max-width: 800px;
-      background: rgba(255,255,255,0.15);
-      backdrop-filter: blur(12px);
-      border-radius: 16px;
-      padding: 20px;
-      color: #fff;
-      box-shadow: 0 8px 30px rgba(0,0,0,0.2);
-    }
-    h2 {
-      text-align: center;
-      margin-bottom: 20px;
-    }
-    .task-card {
-      background: rgba(255,255,255,0.2);
-      padding: 15px;
-      border-radius: 12px;
-      margin-bottom: 15px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      transition: transform 0.2s ease;
-    }
-    .task-card:hover { transform: scale(1.02); }
-    .task-info { flex: 1; }
-    .task-actions button {
-      margin: 0 5px;
-      padding: 6px 12px;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 14px;
-      font-weight: bold;
-    }
-    .done { background: #4caf50; color: #fff; }
-    .delay { background: #ff9800; color: #fff; }
-    .progress {
-      margin: 20px 0;
-      height: 12px;
-      border-radius: 8px;
-      background: rgba(255,255,255,0.2);
-      overflow: hidden;
-    }
-    .progress-bar {
-      height: 100%;
-      width: 0%;
-      background: #4caf50;
-      transition: width 0.4s ease;
-    }
-    .notification {
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      background: rgba(0,0,0,0.8);
-      color: #fff;
-      padding: 10px 20px;
-      border-radius: 8px;
-      opacity: 0;
-      transform: translateY(-20px);
-      transition: opacity 0.4s, transform 0.4s;
-    }
-    .notification.show {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  </style>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>بوابة الموظف - مهامي</title>
+
+<!-- Firebase v8 -->
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+<style>
+  :root{
+    --bg:#0b1220;--card:#111a2b;--glass:rgba(255,255,255,.06);
+    --text:#e7f0ff;--muted:#a6b2c8;--brand:#55c2ff;--ok:#2ad084;--warn:#ffb84d;--line:rgba(255,255,255,.12);
+    --radius:14px;--shadow:0 12px 40px rgba(0,0,0,.35)
+  }
+  *{box-sizing:border-box} html,body{height:100%}
+  body{margin:0;background:radial-gradient(1200px 600px at 10% -10%, rgba(85,194,255,.25), transparent 40%),linear-gradient(160deg,#091427,#0a1630 60%,#0b152b);color:var(--text);font-family:"Tajawal",system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  header{
+    position:sticky;top:0;background:rgba(10,17,33,.7);backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line);z-index:10;padding:16px;text-align:center
+  }
+  .container{max-width:900px;margin:24px auto;padding:0 16px}
+  .panel{background:var(--glass);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;margin-bottom:16px}
+  .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+  .badge{display:inline-flex;gap:8px;align-items:center;padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:#0e1728}
+  .points{font-weight:900;color:#c9ffd8}
+  .progress{height:12px;background:#0f1a2e;border-radius:999px;overflow:hidden}
+  .bar{height:100%;width:0;background:linear-gradient(90deg,#2ad084,#8df4d0)}
+  table{width:100%;border-collapse:collapse;margin-top:12px;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  th,td{padding:11px;border-bottom:1px solid var(--line);text-align:center}
+  th{background:rgba(255,255,255,.06);color:#bfe6ff}
+  tr:hover{background:rgba(255,255,255,.04)}
+  button{padding:7px 12px;border:none;border-radius:10px;cursor:pointer}
+  .ok{background:var(--ok);color:#092016;font-weight:800}
+  .warn{background:var(--warn);color:#1d1203;font-weight:800}
+  .muted{color:var(--muted)}
+  .toast{position:fixed;top:18px;left:50%;transform:translateX(-50%);background:#0e1728;border:1px solid var(--line);padding:10px 14px;border-radius:10px;display:none;z-index:50}
+  .toast.show{display:block;animation:fade .2s} @keyframes fade{from{opacity:.6;transform:translate(-50%,-6px)}to{opacity:1;transform:translate(-50%,0)}}
+
+  /* Modal */
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:100}
+  .modal .box{width:min(92%,420px);background:#0e1728;border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:16px}
+  textarea,input{width:100%;background:#0c1526;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px;outline:none}
+  .box .row-end{display:flex;justify-content:flex-end;gap:8px;margin-top:8px}
+</style>
 </head>
 <body>
-  <div class="container">
-    <h2>📌 مهامي اليومية</h2>
-    <div class="progress"><div id="progressBar" class="progress-bar"></div></div>
-    <div id="tasks"></div>
+
+<header>
+  <div class="row" style="justify-content:center;gap:12px">
+    <div id="empName" class="badge">👤 الموظف: ...</div>
+    <div class="badge">🏆 النقاط: <span id="points" class="points">0</span></div>
+    <div class="badge muted">📅 <span id="today"></span></div>
+  </div>
+</header>
+
+<div class="container">
+  <div class="panel">
+    <div class="row"><b>نسبة إنجاز مهام اليوم</b></div>
+    <div class="progress" style="margin-top:10px"><div id="bar" class="bar"></div></div>
   </div>
 
-  <div id="notification" class="notification"></div>
+  <div class="panel">
+    <h3>📋 مهام اليوم</h3>
+    <table>
+      <thead><tr><th>المهمة</th><th>إجراء</th></tr></thead>
+      <tbody id="dailyBody"></tbody>
+    </table>
+  </div>
 
-  <script>
-    // إعداد Firebase
-    const firebaseConfig = {
-      apiKey: "AIzaSyA7KirsWgafKXPsQfFl3v6ssMaAb_zjTps",
-      authDomain: "tasks-bce7f.firebaseapp.com",
-      databaseURL: "https://tasks-bce7f-default-rtdb.firebaseio.com",
-      projectId: "tasks-bce7f",
-      storageBucket: "tasks-bce7f.firebasestorage.app",
-      messagingSenderId: "493499367071",
-      appId: "1:493499367071:web:c667a4666f1e84d8b32caa",
-      measurementId: "G-HR305C8QHR"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
+  <div class="panel">
+    <h3>⏳ المهام المؤجّلة</h3>
+    <table>
+      <thead><tr><th>المهمة</th><th>السبب</th><th>التاريخ المقترح</th></tr></thead>
+      <tbody id="delayedBody"></tbody>
+    </table>
+  </div>
+</div>
 
-    // الحصول على معرف الموظف من الرابط
-    const urlParams = new URLSearchParams(window.location.search);
-    const empId = urlParams.get("emp");
+<div id="toast" class="toast"></div>
 
-    const tasksDiv = document.getElementById("tasks");
-    const progressBar = document.getElementById("progressBar");
+<!-- تأجيل: سبب -->
+<div id="delayModal" class="modal">
+  <div class="box">
+    <h3>سبب التأجيل</h3>
+    <div class="muted" style="margin:6px 0">الرجاء كتابة ملاحظة قصيرة عن سبب تأجيل المهمة.</div>
+    <textarea id="delayReason" rows="4" placeholder="مثال: انتظار موافقة العميل..."></textarea>
+    <div class="row-end">
+      <button onclick="closeDelay()" class="muted">إلغاء</button>
+      <button class="warn" onclick="confirmDelay()">تأجيل</button>
+    </div>
+  </div>
+</div>
 
-    function showNotification(msg){
-      const n = document.getElementById("notification");
-      n.innerText = msg;
-      n.classList.add("show");
-      setTimeout(()=> n.classList.remove("show"),2000);
-    }
+<script>
+  /* ================= Firebase ================= */
+  const firebaseConfig = {
+    apiKey: "AIzaSyA7KirsWgafKXPsQfFl3v6ssMaAb_zjTps",
+    authDomain: "tasks-bce7f.firebaseapp.com",
+    databaseURL: "https://tasks-bce7f-default-rtdb.firebaseio.com",
+    projectId: "tasks-bce7f",
+    storageBucket: "tasks-bce7f.firebasestorage.app",
+    messagingSenderId: "493499367071",
+    appId: "1:493499367071:web:c667a4666f1e84d8b32caa",
+    measurementId: "G-HR305C8QHR"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
 
-    function loadTasks(){
-      db.ref("tasks/"+empId).on("value", snap=>{
-        const data = snap.val();
-        tasksDiv.innerHTML="";
-        let total=0, done=0;
+  const url = new URLSearchParams(location.search);
+  const empId = url.get("emp");
+  const EMP_REF = db.ref("employees");
+  const DAILY_REF = db.ref("tasksDaily");
+  const DELAYED_REF = db.ref("delayedTasks");
+  const ACTIVITY_REF = db.ref("activity");
 
-        for(let id in data){
-          total++;
-          const task = data[id];
-          if(task.status==="done") done++;
+  const $ = s=>document.querySelector(s);
+  const todayStr = ()=> new Date().toISOString().slice(0,10);
+  const toast = (m)=>{ const t=$("#toast"); t.textContent=m; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),1600); };
 
-          const card = document.createElement("div");
-          card.className="task-card";
-          card.innerHTML=`
-            <div class="task-info">
-              <strong>${task.text}</strong><br>
-              <small>📅 ${task.date}</small>
-              ${task.delayCount ? `<br><small>⏳ تأجلت ${task.delayCount} مرات</small>` : ""}
-            </div>
-            <div class="task-actions">
-              <button class="done" onclick="markDone('${id}')">تم الإنجاز</button>
-              <button class="delay" onclick="delayTask('${id}')">تأجيل</button>
-            </div>
-          `;
-          tasksDiv.appendChild(card);
-        }
+  $("#today").textContent = todayStr();
 
-        // تحديث شريط التقدم
-        const percent = total ? Math.round((done/total)*100) : 0;
-        progressBar.style.width = percent+"%";
+  let empName=""; let empPoints=0;
+  let selectedTaskId = null;
+
+  // الاسم + النقاط
+  if(!empId){
+    $("#empName").textContent = "رابط الموظف غير صالح";
+  }else{
+    EMP_REF.child(empId).on("value", s=>{
+      const v=s.val()||{}; empName=v.name||"—"; empPoints=v.points||0;
+      $("#empName").textContent = "👤 الموظف: " + empName;
+      $("#points").textContent = empPoints;
+    });
+  }
+
+  // تحميل مهام اليوم
+  function loadDaily(){
+    const date=todayStr(); const tbody=$("#dailyBody"); tbody.innerHTML="";
+    DAILY_REF.child(`${empId}/${date}`).on("value", snap=>{
+      const tasks = snap.val()||{};
+      tbody.innerHTML="";
+      let total=0, done=0;
+      for(const id in tasks){
+        const t = tasks[id];
+        if(t.status==="done"){ done++; continue; } // لا نعرض المنجزة
+        total++;
+        const tr=document.createElement("tr");
+        tr.innerHTML = `
+          <td>${t.text}</td>
+          <td>
+            <button class="ok" onclick="completeTask('${id}')">✔ تم الإنجاز</button>
+            <button class="warn" onclick="openDelay('${id}')">⏳ تأجيل</button>
+          </td>`;
+        tbody.appendChild(tr);
+      }
+      const percent = (total+done) ? Math.round((done/(total+done))*100) : 0;
+      $("#bar").style.width = percent + "%";
+    });
+  }
+
+  // تحميل المؤجلة
+  function loadDelayed(){
+    const tbody=$("#delayedBody"); tbody.innerHTML="";
+    DELAYED_REF.child(empId).on("value", snap=>{
+      const data=snap.val()||{};
+      tbody.innerHTML="";
+      for(const tid in data){
+        const t=data[tid];
+        const tr=document.createElement("tr");
+        tr.innerHTML = `<td>${t.text||"—"}</td><td>${t.reason||"-"}</td><td>${(t.targetDate||"—").slice(0,10)}</td>`;
+        tbody.appendChild(tr);
+      }
+    });
+  }
+
+  // إنجاز
+  function completeTask(taskId){
+    const date = todayStr();
+    const ref = DAILY_REF.child(`${empId}/${date}/${taskId}`);
+    ref.once("value").then(s=>{
+      const task = s.val(); if(!task) return;
+      // احذفها من اليوم
+      ref.remove().then(()=>{
+        // فعالية + نقطة + رسالة
+        ACTIVITY_REF.child(empId).push({type:"done", text:task.text, at:Date.now()});
+        EMP_REF.child(`${empId}/points`).transaction(p => (p||0)+1);
+        toast("✅ شكراً على خدمتكم");
       });
-    }
+    });
+  }
 
-    function markDone(taskId){
-      db.ref("tasks/"+empId+"/"+taskId).update({status:"done"})
-        .then(()=> showNotification("✅ تم إنجاز المهمة"));
-    }
-
-    function delayTask(taskId){
-      const taskRef = db.ref("tasks/"+empId+"/"+taskId);
-      taskRef.once("value").then(snap=>{
-        const task = snap.val();
-        const nextDay = new Date();
-        nextDay.setDate(nextDay.getDate()+1);
-        const dateStr = nextDay.toISOString().slice(0,10);
-
-        taskRef.update({
-          date: dateStr,
-          status: "pending",
-          delayCount: (task.delayCount||0)+1
-        }).then(()=> showNotification("⏳ تم تأجيل المهمة لليوم التالي"));
+  // تأجيل
+  function openDelay(taskId){ selectedTaskId = taskId; $("#delayModal").style.display="flex"; }
+  function closeDelay(){ $("#delayModal").style.display="none"; $("#delayReason").value=""; }
+  function confirmDelay(){
+    const reason = ($("#delayReason").value||"").trim();
+    if(!reason){ toast("⚠️ يرجى كتابة سبب التأجيل"); return; }
+    const date = todayStr();
+    const ref = DAILY_REF.child(`${empId}/${date}/${selectedTaskId}`);
+    ref.once("value").then(s=>{
+      const task=s.val(); if(!task) { closeDelay(); return; }
+      const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate()+1);
+      const nextStr = tomorrow.toISOString().slice(0,10);
+      // ضافة للمؤجلة
+      DELAYED_REF.child(`${empId}/${selectedTaskId}`).set({
+        text:task.text, reason, delayCount:(task.delayCount||0)+1,
+        createdAt:task.createdAt||Date.now(), targetDate: nextStr
+      }).then(()=>{
+        // احذف من اليوم
+        ref.remove().then(()=>{
+          ACTIVITY_REF.child(empId).push({type:"delay", text:task.text, reason, at:Date.now()});
+          closeDelay(); toast("⏳ تم التأجيل ونقل المهمة إلى المؤجلة");
+        });
       });
-    }
+    });
+  }
 
-    if(empId) loadTasks();
-    else tasksDiv.innerHTML="<p>❌ رابط الموظف غير صالح</p>";
-  </script>
+  // بدء
+  if(empId){ loadDaily(); loadDelayed(); }
+</script>
 </body>
 </html>
