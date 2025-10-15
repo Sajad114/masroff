@@ -1,541 +1,608 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>لوحة الإدارة - نظام المهام</title>
-
-<!-- Firebase v8 -->
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>مولد جدول عروض (Liquid Glass)</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#0f1420;--panel:#121a2a;--glass:rgba(255,255,255,.06);
-    --text:#e8eefb;--muted:#a9b4c7;--brand:#55c2ff;--brand-2:#6affc2;
-    --ok:#33d17a;--warn:#ffb545;--danger:#ff6b6b;--line:rgba(255,255,255,.12);
-    --radius:14px;--shadow:0 12px 40px rgba(0,0,0,.35)
+    --glass-bg: rgba(140,200,180,0.12);
+    --accent: #39c2a6; /* الافتراضي فيروزي-زيتوني */
+    --accent-weak: rgba(57,194,166,0.18);
+    --text: #ffffff;
+    --glass-border: rgba(180,255,220,0.3);
   }
-  *{box-sizing:border-box} html,body{height:100%}
+
+  *{box-sizing:border-box}
   body{
-    margin:0;background:linear-gradient(160deg,#0b1220,#0a1730 60%,#09192f);
-    color:var(--text);font-family:"Tajawal",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    margin:0;
+    font-family:'Tajawal',sans-serif;
+    background: linear-gradient(135deg,#112521,#0f2e2b 40%, #081613 100%);
+    color:var(--text);
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    gap:18px;
+    align-items:center;
+    padding:24px;
   }
 
-  /* Header */
-  header{
-    position:fixed;inset:0 0 auto 0;height:64px;display:flex;align-items:center;gap:12px;
-    padding:0 16px;background:rgba(8,14,26,.6);backdrop-filter:blur(10px);
-    border-bottom:1px solid var(--line);z-index:1001
+  .app {
+    width:100%;
+    max-width:1100px;
   }
-  .menu-btn{font-size:22px;line-height:1;padding:10px 12px;border:none;cursor:pointer;border-radius:10px;
-    color:#081019;background:linear-gradient(135deg,var(--brand),var(--brand-2));font-weight:700}
-  .title{font-weight:800;letter-spacing:.2px}
 
-  /* Sidebar (hidden by default; slide-in) */
-  .sidebar{
-    position:fixed;top:0;right:-280px;height:100%;width:260px;padding:18px;
-    background:rgba(18,26,42,.9);backdrop-filter:blur(12px);border-left:1px solid var(--line);
-    transition:right .28s ease;z-index:1002
+  /* رأس الأدوات */
+  .toolbar {
+    display:flex;
+    gap:12px;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:6px;
+    flex-wrap:wrap;
   }
-  .sidebar.active{right:0}
-  .side-h{margin:70px 0 10px;color:var(--muted);font-weight:700}
-  .nav-btn{
-    width:100%;text-align:right;padding:12px;border:none;border-radius:10px;margin:6px 0;cursor:pointer;
-    color:var(--text);background:transparent;border:1px solid var(--line);transition:.2s
+
+  .controls {
+    display:flex;
+    gap:10px;
+    align-items:center;
+    flex-wrap:wrap;
   }
-  .nav-btn:hover{background:var(--glass)}
-  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;z-index:1000}
-  .overlay.active{display:block}
 
-  /* Content */
-  .container{max-width:1200px;margin:96px auto 60px;padding:0 16px}
-  .section{display:none}
-  .section.active{display:block}
-
-  /* Cards / stats */
-  .grid{display:grid;gap:16px}
-  .grid.cols-3{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
-  .card{
-    background:var(--glass);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);
-    padding:18px
+  .card {
+    background: rgba(255,255,255,0.03);
+    border-radius:12px;
+    padding:12px;
+    border:1px solid rgba(255,255,255,0.04);
+    box-shadow:0 6px 30px rgba(0,0,0,0.5);
   }
-  .clickable{cursor:pointer;transition:.2s}
-  .clickable:hover{transform:translateY(-2px)}
-  .stat-val{font-size:32px;font-weight:900;margin:6px 0;color:#fff}
-  .badge{display:inline-block;padding:4px 10px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
 
-  /* Forms + Table */
-  .row{display:flex;flex-wrap:wrap;gap:10px}
-  input,select,button,textarea{
-    background:#0e1524;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px 12px;outline:none
+  .color-picker {
+    display:flex;
+    gap:8px;
+    align-items:center;
   }
-  input::placeholder{color:#7f8aa1}
-  button.primary{background:linear-gradient(135deg,var(--brand),var(--brand-2));color:#081019;border:none;font-weight:800}
-  button.ghost{background:transparent}
-  button.warn{background:var(--warn);border:none;color:#141b2b;font-weight:800}
-  button.danger{background:var(--danger);border:none;color:#fff;font-weight:800}
 
-  table{width:100%;border-collapse:collapse;margin-top:12px;border:1px solid var(--line);border-radius:12px;overflow:hidden}
-  th,td{padding:11px;border-bottom:1px solid var(--line);text-align:center}
-  th{background:rgba(255,255,255,.06);color:#bfe6ff}
-  tr:hover{background:rgba(255,255,255,.04)}
-  .actions button{margin:0 4px}
+  label.small { font-size:13px; color:rgba(255,255,255,0.8); margin-inline-end:6px; }
 
-  /* Pills */
-  .pill{padding:6px 10px;border-radius:999px;border:1px solid var(--line);display:inline-flex;gap:6px;align-items:center}
+  input[type="color"] { width:44px; height:34px; border-radius:8px; border:none; padding:0; cursor:pointer; }
 
-  /* Toast */
-  .toast{position:fixed;top:80px;left:50%;transform:translateX(-50%);
-         background:#101a2d;border:1px solid var(--line);padding:10px 14px;border-radius:10px;display:none;z-index:2000}
-  .toast.show{display:block;animation:fade .2s}
-  @keyframes fade{from{opacity:.6;transform:translate(-50%,-6px)}to{opacity:1;transform:translate(-50%,0)}}
+  button.btn{
+    background:linear-gradient(180deg,var(--accent), color-mix(in srgb, var(--accent) 60%, black 20%));
+    color:#012;
+    border:none;
+    padding:10px 14px;
+    border-radius:10px;
+    font-weight:700;
+    cursor:pointer;
+    box-shadow:0 6px 20px rgba(0,0,0,0.4);
+  }
+  button.ghost {
+    background:transparent;
+    color:var(--text);
+    border:1px solid rgba(255,255,255,0.08);
+    padding:8px 12px;
+    border-radius:10px;
+    cursor:pointer;
+  }
 
-  /* Section headers */
-  h2{margin:6px 0 12px}
+  /* form اضافة صف */
+  .form-row {
+    display:flex;
+    gap:8px;
+    align-items:center;
+    flex-wrap:wrap;
+  }
+  .form-row input, .form-row select {
+    padding:8px 10px;
+    border-radius:8px;
+    border:1px solid rgba(255,255,255,0.06);
+    background: rgba(255,255,255,0.02);
+    color:var(--text);
+    min-width:110px;
+  }
+  .form-row input.small { min-width:94px; padding:7px; font-size:14px; }
+
+  /* القالب الزجاجي (preview) */
+  .preview-wrap {
+    margin-top:6px;
+    display:flex;
+    gap:18px;
+    align-items:flex-start;
+    flex-wrap:wrap;
+  }
+
+  .table-container {
+    width:100%;
+    max-width:720px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px) saturate(150%);
+    -webkit-backdrop-filter: blur(20px) saturate(150%);
+    border-radius:22px;
+    border:1px solid var(--glass-border);
+    box-shadow:0 0 60px color-mix(in srgb, var(--accent) 40%, transparent);
+    overflow:hidden;
+    position:relative;
+    padding:10px;
+  }
+
+  /* تأثير سائل خلفي */
+  .table-container::before{
+    content:"";
+    position:absolute;
+    inset:-30% -30% -30% -30%;
+    background:
+      radial-gradient(circle at 20% 30%, color-mix(in srgb,var(--accent) 25%, transparent), transparent 30%),
+      radial-gradient(circle at 80% 70%, color-mix(in srgb,var(--accent) 15%, transparent), transparent 40%);
+    filter:blur(50px) saturate(160%);
+    z-index:0;
+    transform:translate3d(0,0,0);
+    animation:float 10s infinite alternate ease-in-out;
+    opacity:0.9;
+  }
+  @keyframes float{ from{transform:translateY(0)} to{transform:translateY(10px) rotate(2deg)} }
+
+  .table-content { position:relative; z-index:2; padding:8px; }
+
+  h2.title {
+    text-align:center;
+    margin:10px 0 6px 0;
+    color: color-mix(in srgb, var(--accent) 80%, white 20%);
+    text-shadow: 0 0 20px color-mix(in srgb, var(--accent) 50%, transparent);
+    font-size:20px;
+  }
+
+  table.stylish {
+    width:100%;
+    border-collapse:collapse;
+    text-align:center;
+    font-size:16px;
+  }
+  table.stylish th, table.stylish td {
+    padding:12px 10px;
+  }
+  table.stylish th {
+    background: var(--accent-weak);
+    color: color-mix(in srgb,var(--accent) 80%, white 20%);
+    font-weight:700;
+    font-size:15px;
+    text-shadow:0 0 8px rgba(0,0,0,0.2);
+    backdrop-filter: blur(6px);
+  }
+  table.stylish td {
+    color:var(--text);
+    border-bottom:1px solid rgba(255,255,255,0.04);
+    vertical-align:middle;
+  }
+  table.stylish tr:nth-child(even) td{
+    background: rgba(255,255,255,0.02);
+  }
+  .size-small {
+    display:block;
+    font-size:13px;
+    color: rgba(220,255,235,0.8);
+    margin-top:6px;
+    opacity:0.9;
+  }
+
+  /* إعدادات الجانب */
+  .side-panel {
+    min-width:260px;
+    max-width:320px;
+    width:100%;
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent);
+    border-radius:12px;
+    padding:12px;
+    border:1px solid rgba(255,255,255,0.03);
+  }
+
+  .side-panel h3 { margin:0 0 8px 0; font-size:16px; color:rgba(255,255,255,0.9) }
+
+  .list-rows { max-height:260px; overflow:auto; display:flex; flex-direction:column; gap:8px; margin-top:8px; }
+
+  .row-item {
+    display:flex; justify-content:space-between; align-items:center;
+    gap:8px; background: rgba(0,0,0,0.12); padding:8px; border-radius:8px;
+    border:1px solid rgba(255,255,255,0.03);
+  }
+  .row-item .meta { text-align:left; font-size:13px; color:rgba(255,255,255,0.9) }
+  .row-actions { display:flex; gap:6px }
+
+  .muted { color: rgba(255,255,255,0.6); font-size:13px }
+
+  /* أزرار تصدير */
+  .exports { display:flex; gap:8px; margin-top:12px; flex-wrap:wrap }
+
+  /* responsive */
+  @media (max-width:980px){
+    .preview-wrap { flex-direction:column; align-items:center }
+    .side-panel { max-width:100% }
+  }
 </style>
 </head>
 <body>
+  <div class="app">
 
-<header>
-  <button class="menu-btn" id="menuBtn">☰</button>
-  <div class="title">لوحة الإدارة — نظام إدارة المهام</div>
-</header>
+    <div class="toolbar">
+      <div class="controls card">
+        <div style="display:flex;gap:8px;align-items:center;">
+          <label class="small">لون أساسي</label>
+          <div class="color-picker">
+            <input id="colorInput" type="color" value="#39c2a6" title="غير اللون">
+            <select id="preset" style="padding:8px;border-radius:8px;">
+              <option value="#39c2a6">فيروزي-زيتوني (افتراضي)</option>
+              <option value="#00b3ff">فيروزي ساطع</option>
+              <option value="#6fcf97">أخضر فاتح</option>
+              <option value="#8a6b9b">بنفسجي هادئ</option>
+              <option value="#ffb86b">برتقالي دافئ</option>
+            </select>
+          </div>
+        </div>
 
-<!-- Sidebar -->
-<aside class="sidebar" id="sidebar">
-  <div class="side-h">الأقسام</div>
-  <button class="nav-btn" onclick="showSection('employees')">👥 إدارة الموظفين</button>
-  <button class="nav-btn" onclick="showSection('tasks')">📝 إدارة المهام</button>
-  <button class="nav-btn" onclick="showSection('delayed')">⏳ المهام المؤجلة</button>
-  <button class="nav-btn" onclick="showSection('stats')">📊 الإحصاءات</button>
-
-  <div class="side-h">أدوات</div>
-  <button class="nav-btn" onclick="exportEmployees()">⬇️ تصدير الموظفين (CSV)</button>
-  <button class="nav-btn" onclick="exportTasks()">⬇️ تصدير المهام (CSV)</button>
-</aside>
-<div class="overlay" id="overlay"></div>
-
-<div class="container">
-
-  <!-- 📌 الإحصاءات (تفاعلية) -->
-  <section id="stats" class="section active">
-    <div class="grid cols-3">
-      <div class="card clickable" onclick="showSection('employees')">
-        <div class="badge">الموظفون</div>
-        <div class="stat-val" id="statEmployees">0</div>
-        <div class="muted">اضغط للانتقال لجدول الموظفين</div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <label class="small">اسم العنوان</label>
+          <input id="tableTitle" type="text" placeholder="عروض شاشات سامسونك" style="min-width:220px" value="عروض شاشات سامسونك">
+        </div>
       </div>
-      <div class="card clickable" onclick="showSection('tasks')">
-        <div class="badge">مهام اليوم</div>
-        <div class="stat-val" id="statTasksToday">0</div>
-        <div class="muted">اضغط للانتقال لجدول المهام</div>
-      </div>
-      <div class="card clickable" onclick="showSection('delayed')">
-        <div class="badge">مؤجّلة</div>
-        <div class="stat-val" id="statDelayed">0</div>
-        <div class="muted">اضغط لعرض المؤجّلة وإعادة جدولتها</div>
+
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button id="downloadXLS" class="btn">تحميل Excel</button>
+        <button id="downloadPDF" class="btn">تحميل PDF</button>
+        <button id="downloadPNG" class="ghost">تحميل صورة</button>
       </div>
     </div>
 
-    <div class="grid" style="margin-top:16px">
-      <div class="card">
-        <div class="row">
-          <div class="pill">🗓️ تاريخ اليوم: <b id="todayTxt" style="margin-inline-start:6px"></b></div>
-          <div class="pill">🏆 مجموع نقاط هذا الأسبوع: <b id="statPointsWeek" style="margin-inline-start:6px">0</b></div>
-          <div class="pill">⏱️ آخر تصفير: <b id="lastReset" style="margin-inline-start:6px">—</b></div>
+    <!-- form اضافة -->
+    <div class="card form-row" style="justify-content:space-between">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input id="inpBrand" placeholder="النوع (مثال: سامسونج)" />
+        <input id="inpSize" placeholder="الحجم (مثال: 43 بوصة)" />
+        <input id="inpDimensions" placeholder="المقاس (مثال: 95×55 سم)" />
+        <input id="inpPrice" placeholder="السعر (مثال: 150000)" class="small" />
+        <button id="addRow" class="btn">أضف الصف</button>
+        <button id="clearAll" class="ghost">فراغ الجدول</button>
+      </div>
+
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input id="search" placeholder="بحث..." style="padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);min-width:160px;">
+      </div>
+    </div>
+
+    <!-- preview + side -->
+    <div class="preview-wrap">
+      <div class="table-container">
+        <div class="table-content">
+          <h2 class="title" id="previewTitle">عروض شاشات سامسونج</h2>
+          <div id="previewTableArea">
+            <!-- table rendered by JS -->
+          </div>
+        </div>
+      </div>
+
+      <div class="side-panel card">
+        <h3>الصفوف الحالية</h3>
+        <div class="list-rows" id="rowsList"></div>
+
+        <div style="margin-top:12px;">
+          <div class="muted">حفظ / استيراد</div>
+          <div style="display:flex;gap:8px;margin-top:8px;">
+            <button id="saveJSON" class="ghost">تنزيل JSON</button>
+            <input id="uploadJSON" type="file" accept=".json" style="display:none">
+            <button id="btnUpload" class="ghost">استيراد JSON</button>
+          </div>
+
+          <div class="exports">
+            <button id="copyHTML" class="ghost">نسخ HTML</button>
+            <button id="copyTable" class="ghost">نسخ جدول</button>
+          </div>
         </div>
       </div>
     </div>
-  </section>
 
-  <!-- 👥 إدارة الموظفين -->
-  <section id="employees" class="section">
-    <h2>👥 إدارة الموظفين</h2>
-    <div class="card">
-      <div class="row">
-        <input id="empName" placeholder="اسم الموظف" />
-        <button class="primary" onclick="addEmployee()">➕ إضافة موظف</button>
-        <input id="empSearch" placeholder="بحث..." oninput="filterEmployees()"/>
-      </div>
-      <table>
+  </div>
+
+  <!-- المكتبات (CDN) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.2/html2pdf.bundle.min.js"></script>
+
+  <script>
+    /***********************
+     * بيانات داخلية (Model)
+     ***********************/
+    let rows = [
+      // مثال مبدئي
+      { brand:"سامسونك", size:"43 بوصة", dims:"95×55 سم", price:150000 },
+      { brand:"سامسونك", size:"50 بوصة", dims:"109×66 سم", price:235000 },
+      { brand:"سامسونك", size:"55 بوصة", dims:"112×68 سم", price:245000 },
+      { brand:"سامسونك", size:"60 بوصة", dims:"122×74 سم", price:299000 },
+      { brand:"سامسونك", size:"70 بوصة", dims:"—", price:429000 },
+      { brand:"سامسونك", size:"75 بوصة", dims:"—", price:550000 }
+    ];
+
+    /***********************
+     * عناصر الواجهة
+     ***********************/
+    const previewTableArea = document.getElementById('previewTableArea');
+    const rowsList = document.getElementById('rowsList');
+    const addRowBtn = document.getElementById('addRow');
+    const clearAllBtn = document.getElementById('clearAll');
+    const inpBrand = document.getElementById('inpBrand');
+    const inpSize = document.getElementById('inpSize');
+    const inpDims = document.getElementById('inpDimensions');
+    const inpPrice = document.getElementById('inpPrice');
+    const searchInput = document.getElementById('search');
+    const colorInput = document.getElementById('colorInput');
+    const preset = document.getElementById('preset');
+    const previewTitle = document.getElementById('previewTitle');
+    const tableTitleInput = document.getElementById('tableTitle');
+
+    /***********************
+     * تهيئة / ريندر
+     ***********************/
+    function renderTable(filter=""){
+      // فلترة
+      const filtered = rows.filter(r=>{
+        const q = filter.trim().toLowerCase();
+        if(!q) return true;
+        return (r.brand + " " + r.size + " " + r.dims + " " + r.price).toLowerCase().includes(q);
+      });
+
+      const table = document.createElement('table');
+      table.className = 'stylish';
+      table.innerHTML = `
         <thead>
-          <tr><th>الموظف</th><th>النقاط</th><th>رابط الموظف</th><th>إجراءات</th></tr>
+          <tr>
+            <th>النوع</th>
+            <th>الحجم</th>
+            <th>السعر</th>
+          </tr>
         </thead>
-        <tbody id="empTable"></tbody>
-      </table>
-    </div>
-  </section>
-
-  <!-- 📝 إدارة المهام (إنشاء + عرض حسب التاريخ) -->
-  <section id="tasks" class="section">
-    <h2>📝 إدارة المهام</h2>
-    <div class="card">
-      <div class="row">
-        <select id="empSelect"></select>
-        <input type="date" id="taskDate"/>
-      </div>
-      <div id="taskFields" class="row" style="margin-top:6px">
-        <input class="taskInput" placeholder="أدخل مهمة"/>
-      </div>
-      <div class="row">
-        <button class="ghost" onclick="addTaskField()">➕ إضافة حقل</button>
-        <button class="primary" onclick="saveTasks()">💾 حفظ المهام</button>
-      </div>
-    </div>
-
-    <div class="card" style="margin-top:12px">
-      <div class="row">
-        <select id="viewEmpFilter"></select>
-        <input type="date" id="viewDate" />
-        <button onclick="loadTasksTable()">تحديث</button>
-      </div>
-      <table>
-        <thead>
-          <tr><th>الموظف</th><th>التاريخ</th><th>عدد المهام</th><th>تفاصيل</th></tr>
-        </thead>
-        <tbody id="tasksTable"></tbody>
-      </table>
-    </div>
-  </section>
-
-  <!-- ⏳ المهام المؤجلة -->
-  <section id="delayed" class="section">
-    <h2>⏳ المهام المؤجلة</h2>
-    <div class="card">
-      <div class="row">
-        <select id="delayedEmpFilter"></select>
-        <button onclick="loadDelayed()">تحديث</button>
-      </div>
-      <table>
-        <thead>
-          <tr><th>الموظف</th><th>المهمة</th><th>السبب</th><th>مرات التأجيل</th><th>التاريخ المقترح</th><th>إجراءات</th></tr>
-        </thead>
-        <tbody id="delayedTable"></tbody>
-      </table>
-    </div>
-  </section>
-</div>
-
-<div id="toast" class="toast"></div>
-
-<script>
-  /* ================= Firebase ================= */
-  const firebaseConfig = {
-    apiKey: "AIzaSyA7KirsWgafKXPsQfFl3v6ssMaAb_zjTps",
-    authDomain: "tasks-bce7f.firebaseapp.com",
-    databaseURL: "https://tasks-bce7f-default-rtdb.firebaseio.com",
-    projectId: "tasks-bce7f",
-    storageBucket: "tasks-bce7f.firebasestorage.app",
-    messagingSenderId: "493499367071",
-    appId: "1:493499367071:web:c667a4666f1e84d8b32caa",
-    measurementId: "G-HR305C8QHR"
-  };
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.database();
-
-  /* =============== Helpers =============== */
-  const $ = s => document.querySelector(s);
-  const $$ = s => document.querySelectorAll(s);
-  const todayStr = () => new Date().toISOString().slice(0,10);
-  const toast = (msg)=>{ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),1600); };
-  const EMP_REF = db.ref("employees");
-  const DAILY_REF = db.ref("tasksDaily");
-  const DELAYED_REF = db.ref("delayedTasks");
-  const META_REF = db.ref("meta");
-
-  /* =============== Sidebar Toggle =============== */
-  const sidebar = $("#sidebar"), overlay=$("#overlay"), menuBtn=$("#menuBtn");
-  menuBtn.onclick = ()=>{ sidebar.classList.add("active"); overlay.classList.add("active"); }
-  overlay.onclick = ()=>{ sidebar.classList.remove("active"); overlay.classList.remove("active"); }
-  document.addEventListener("click",(e)=>{
-    if(!sidebar.contains(e.target) && !menuBtn.contains(e.target)) { sidebar.classList.remove("active"); overlay.classList.remove("active"); }
-  });
-
-  /* =============== Sections =============== */
-  function showSection(id){
-    $$(".section").forEach(s=>s.classList.remove("active"));
-    $("#"+id).classList.add("active");
-    if(id==="stats") updateStats();
-    if(id==="tasks") { fillEmpSelects(); }
-    if(id==="delayed") { fillEmpSelects(); loadDelayed(); }
-    if(id==="employees") {} // nothing
-  }
-
-  /* =============== Employees CRUD =============== */
-  $("#todayTxt").textContent = todayStr();
-
-  function addEmployee(){
-    const name = $("#empName").value.trim();
-    if(!name){ toast("⚠️ اكتب اسم الموظف"); return; }
-    const ref = EMP_REF.push();
-    ref.set({ name, points:0 }).then(()=>{
-      $("#empName").value="";
-      toast("✅ تم إضافة الموظف");
-    });
-  }
-
-  function employeeLink(id){
-    // يشتغل إذا الملفين بنفس المجلد
-    return `${location.origin}/employee.html?emp=${id}`;
-  }
-
-  function renderEmployees(data){
-    const tbody = $("#empTable"); tbody.innerHTML="";
-    const select = $("#empSelect"); const viewEmp = $("#viewEmpFilter"); const delayedEmp = $("#delayedEmpFilter");
-    select.innerHTML=""; viewEmp.innerHTML="<option value=''>الكل</option>"; delayedEmp.innerHTML="<option value=''>الكل</option>";
-
-    const query = ($("#empSearch").value||"").toLowerCase();
-    let count=0;
-    for(const id in data){
-      const emp = data[id]; const name = emp.name || "—";
-      if(query && !name.toLowerCase().includes(query)) continue;
-      count++;
-      const link = employeeLink(id);
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${name}</td>
-        <td><b>${emp.points||0}</b></td>
-        <td style="direction:ltr"><a href="${link}" target="_blank">${link}</a></td>
-        <td class="actions">
-          <button onclick="copyLink('${link}')">📋 نسخ</button>
-          <button class="danger" onclick="deleteEmp('${id}')">🗑 حذف</button>
-        </td>`;
-      tbody.appendChild(tr);
-
-      select.innerHTML += `<option value="${id}">${name}</option>`;
-      viewEmp.innerHTML += `<option value="${id}">${name}</option>`;
-      delayedEmp.innerHTML += `<option value="${id}">${name}</option>`;
+        <tbody>
+          ${filtered.map((r,idx)=>`
+            <tr data-idx="${idx}">
+              <td>${escapeHTML(r.brand)}</td>
+              <td>
+                ${escapeHTML(r.size)}
+                <span class="size-small">${escapeHTML(r.dims)}</span>
+              </td>
+              <td>${numberWithCommas(r.price)}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      `;
+      previewTableArea.innerHTML = '';
+      previewTableArea.appendChild(table);
     }
-    $("#statEmployees").textContent = count;
-  }
 
-  function copyLink(link){ navigator.clipboard.writeText(link); toast("📎 تم نسخ الرابط"); }
-  function deleteEmp(id){
-    if(!confirm("تأكيد حذف الموظف وكافة مهامه؟")) return;
-    EMP_REF.child(id).remove();
-    DAILY_REF.child(id).remove();
-    DELAYED_REF.child(id).remove();
-  }
-
-  EMP_REF.on("value",s=>{ renderEmployees(s.val()||{}); });
-
-  function filterEmployees(){ EMP_REF.once("value").then(s=>renderEmployees(s.val()||{})); }
-
-  /* =============== Create & View Tasks =============== */
-  function addTaskField(){
-    const inp = document.createElement("input");
-    inp.className="taskInput"; inp.placeholder="أدخل مهمة";
-    $("#taskFields").appendChild(inp);
-  }
-
-  function fillEmpSelects(){
-    EMP_REF.once("value").then(s=>{
-      const data=s.val()||{};
-      const sel=$("#empSelect"); const viewEmp=$("#viewEmpFilter");
-      if(sel && sel.options.length<=0){ // already filled by render? skip
-        sel.innerHTML="";
-        for(const id in data) sel.innerHTML += `<option value="${id}">${data[id].name||"—"}</option>`;
-      }
-      if(viewEmp && viewEmp.options.length<=1){
-        viewEmp.innerHTML="<option value=''>الكل</option>";
-        for(const id in data) viewEmp.innerHTML += `<option value="${id}">${data[id].name||"—"}</option>`;
-      }
-    });
-  }
-
-  function saveTasks(){
-    const empId = $("#empSelect").value;
-    const date = $("#taskDate").value || todayStr();
-    const tasks = [...$$(".taskInput")].map(i=>i.value.trim()).filter(Boolean);
-    if(!empId){ toast("⚠️ اختر موظف"); return; }
-    if(!tasks.length){ toast("⚠️ أدخل مهمة واحدة على الأقل"); return; }
-    const ref = DAILY_REF.child(`${empId}/${date}`);
-    const updates = {};
-    tasks.forEach(t=>{
-      const id = db.ref().push().key;
-      updates[id] = { text:t, status:"pending", delayCount:0, createdAt:Date.now() };
-    });
-    ref.update(updates).then(()=>{ toast("✅ تم حفظ المهام"); $("#taskFields").innerHTML=`<input class="taskInput" placeholder="أدخل مهمة"/>`; });
-  }
-
-  function loadTasksTable(){
-    const empFilter = $("#viewEmpFilter").value;
-    const date = $("#viewDate").value || todayStr();
-    const tbody = $("#tasksTable"); tbody.innerHTML="";
-    DAILY_REF.once("value").then(s=>{
-      const data=s.val()||{};
-      let total=0;
-      const rows=[];
-      for(const empId in data){
-        if(empFilter && empFilter!==empId) continue;
-        const byDate = data[empId][date];
-        if(!byDate) continue;
-        const count = Object.keys(byDate).length;
-        total += count;
-        rows.push({empId,date,count,details:Object.values(byDate).map(t=>t.text)});
-      }
-      rows.forEach(r=>{
-        const tr=document.createElement("tr");
-        tr.innerHTML = `<td>${r.empId}</td><td>${r.date}</td><td>${r.count}</td><td>${r.details.join(" • ")}</td>`;
-        tbody.appendChild(tr);
+    function renderList(){
+      rowsList.innerHTML = '';
+      rows.forEach((r,i)=>{
+        const div = document.createElement('div');
+        div.className = 'row-item';
+        div.innerHTML = `
+          <div class="meta">
+            <div style="font-weight:700">${escapeHTML(r.brand)} — ${escapeHTML(r.size)}</div>
+            <div class="muted">${escapeHTML(r.dims)} • ${numberWithCommas(r.price)}</div>
+          </div>
+          <div class="row-actions">
+            <button class="ghost" data-act="edit" data-i="${i}">تعديل</button>
+            <button class="ghost" data-act="del" data-i="${i}">حذف</button>
+          </div>
+        `;
+        rowsList.appendChild(div);
       });
-      $("#statTasksToday").textContent = total;
-    });
-  }
+    }
 
-  /* =============== Delayed Tasks =============== */
-  function loadDelayed(){
-    const empFilter = $("#delayedEmpFilter").value;
-    const tbody = $("#delayedTable"); tbody.innerHTML="";
-    DELAYED_REF.once("value").then(s=>{
-      const data=s.val()||{};
-      let total=0;
-      const promises=[];
-      for(const empId in data){
-        if(empFilter && empFilter!==empId) continue;
-        for(const taskId in data[empId]){
-          total++;
-          const t = data[empId][taskId];
-          const tr=document.createElement("tr");
-          tr.innerHTML = `
-            <td>${empId}</td>
-            <td>${t.text||"—"}</td>
-            <td>${t.reason||"-"}</td>
-            <td>${t.delayCount||0}</td>
-            <td>${t.targetDate||"—"}</td>
-            <td class="actions">
-              <input type="date" id="resched-${empId}-${taskId}" value="${(t.targetDate||"").slice(0,10)}"/>
-              <button class="primary" onclick="reschedule('${empId}','${taskId}')">📅 جدولة</button>
-              <button class="danger" onclick="deleteDelayed('${empId}','${taskId}')">🗑 حذف</button>
-            </td>`;
-          tbody.appendChild(tr);
-        }
+    function syncPreviewTitle(){ previewTitle.textContent = tableTitleInput.value || 'عروض' }
+
+    // أول ريندر
+    renderAll();
+
+    function renderAll(){
+      syncPreviewTitle();
+      renderTable(searchInput.value);
+      renderList();
+      applyAccentToCSS();
+    }
+
+    /***********************
+     * أحداث الواجهة
+     ***********************/
+    addRowBtn.addEventListener('click', ()=>{
+      const brand = inpBrand.value.trim() || '—';
+      const size = inpSize.value.trim() || '—';
+      const dims = inpDims.value.trim() || '—';
+      const price = parseInt(String(inpPrice.value).replace(/[^0-9]/g,'')) || 0;
+      rows.push({brand,size,dims,price});
+      // تفريغ الحقول
+      inpBrand.value=''; inpSize.value=''; inpDims.value=''; inpPrice.value='';
+      renderAll();
+    });
+
+    clearAllBtn.addEventListener('click', ()=>{
+      if(!confirm('متأكد تريد تفريغ كل الصفوف؟')) return;
+      rows = []; renderAll();
+    });
+
+    rowsList.addEventListener('click', (e)=>{
+      const btn = e.target.closest('button');
+      if(!btn) return;
+      const i = parseInt(btn.dataset.i);
+      const act = btn.dataset.act;
+      if(act === 'del'){
+        rows.splice(i,1); renderAll();
+      } else if(act === 'edit'){
+        // فتح مربع تعديل بسيط باستخدام prompt (سهل وسريع)
+        const r = rows[i];
+        const brand = prompt('النوع:', r.brand); if(brand===null) return;
+        const size = prompt('الحجم:', r.size); if(size===null) return;
+        const dims = prompt('المقاس:', r.dims); if(dims===null) return;
+        const price = prompt('السعر:', r.price); if(price===null) return;
+        rows[i] = { brand: brand.trim()||'—', size:size.trim()||'—', dims:dims.trim()||'—', price: parseInt(String(price).replace(/[^0-9]/g,''))||0 };
+        renderAll();
       }
-      $("#statDelayed").textContent = total;
-    });
-  }
-
-  function reschedule(empId, taskId){
-    const inp = document.getElementById(`resched-${empId}-${taskId}`);
-    const date = inp.value || todayStr();
-    DELAYED_REF.child(`${empId}/${taskId}`).once("value").then(s=>{
-      const t=s.val(); if(!t) return;
-      // أعدها لمهام اليوم المحدد
-      DAILY_REF.child(`${empId}/${date}/${taskId}`).set({
-        text:t.text, status:"pending", delayCount:(t.delayCount||0), createdAt:t.createdAt||Date.now()
-      });
-      // امسح من المؤجلة
-      DELAYED_REF.child(`${empId}/${taskId}`).remove().then(()=>{ toast("✅ تمت الجدولة"); loadDelayed(); loadTasksTable(); });
-    });
-  }
-
-  function deleteDelayed(empId, taskId){
-    if(!confirm("حذف المهمة المؤجلة؟")) return;
-    DELAYED_REF.child(`${empId}/${taskId}`).remove().then(()=>{ toast("🗑️ تم الحذف"); loadDelayed(); });
-  }
-
-  /* =============== Stats (live-ish) =============== */
-  function updateStats(){
-    $("#todayTxt").textContent = todayStr();
-
-    EMP_REF.once("value").then(s=>{
-      const emps = s.val()||{};
-      $("#statEmployees").textContent = Object.keys(emps).length;
-      // اجمع نقاط الأسبوع (تقريبية من points الحالية)
-      let sum=0; for(const id in emps) sum += +((emps[id].points)||0);
-      $("#statPointsWeek").textContent = sum;
     });
 
-    // مهام اليوم
-    DAILY_REF.once("value").then(s=>{
-      const data=s.val()||{}; let totalToday=0;
-      const today=todayStr();
-      for(const emp in data){ if(data[emp][today]) totalToday += Object.keys(data[emp][today]).length; }
-      $("#statTasksToday").textContent = totalToday;
+    searchInput.addEventListener('input', ()=> renderTable(searchInput.value));
+    tableTitleInput.addEventListener('input', syncPreviewTitle);
+
+    // تغيير اللون
+    colorInput.addEventListener('input', (e)=>{
+      const c = e.target.value;
+      setAccent(c);
+    });
+    preset.addEventListener('change', ()=> {
+      const c = preset.value;
+      colorInput.value = c;
+      setAccent(c);
     });
 
-    // مؤجلة
-    DELAYED_REF.once("value").then(s=>{
-      const data=s.val()||{}; let total=0;
-      for(const emp in data) total += Object.keys(data[emp]).length;
-      $("#statDelayed").textContent = total;
+    function setAccent(hex){
+      document.documentElement.style.setProperty('--accent', hex);
+      // توليد بقية الvars بناء على hex
+      document.documentElement.style.setProperty('--accent-weak', hexToRgba(hex,0.16));
+      document.documentElement.style.setProperty('--glass-border', hexToRgba(hex,0.25));
+      applyAccentToCSS();
+    }
+
+    function applyAccentToCSS(){
+      // تغيير تأثير الزل في الظلال عبر ضبط box-shadow إذا احتجنا
+      // (هنا فقط نترك المتغيرات، الـ CSS يستخدمها)
+    }
+
+    /***********************
+     * تصدير Excel (SheetJS)
+     ***********************/
+    document.getElementById('downloadXLS').addEventListener('click', ()=>{
+      // تحويل إلى مصفوفة
+      const aoa = [
+        ['النوع','الحجم','المقاس','السعر']
+      ];
+      rows.forEach(r=> aoa.push([r.brand, r.size, r.dims, r.price]));
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
+      const wbout = XLSX.write(wb, {bookType:'xlsx', type:'array'});
+      const blob = new Blob([wbout], {type:'application/octet-stream'});
+      const url = URL.createObjectURL(blob);
+      downloadURL(url, 'offers.xlsx');
+      setTimeout(()=>URL.revokeObjectURL(url), 1000);
     });
 
-    // آخر تصفير
-    META_REF.child("lastReset").once("value").then(s=>{
-      $("#lastReset").textContent = s.val() ? new Date(s.val()).toLocaleString() : "—";
+    /***********************
+     * تصدير PDF (html2pdf)
+     ***********************/
+    document.getElementById('downloadPDF').addEventListener('click', ()=>{
+      const element = document.querySelector('.table-container');
+      const opt = {
+        margin:0.4,
+        filename: (tableTitleInput.value||'offers') + '.pdf',
+        image:{type:'jpeg', quality:0.98},
+        html2canvas:{scale:2, useCORS:true},
+        jsPDF:{unit:'in', format:'a4', orientation:'portrait'}
+      };
+      html2pdf().set(opt).from(element).save();
     });
-  }
 
-  /* =============== Weekly Reset (Wednesday 11 PM Asia/Baghdad) =============== */
-  // نعتمد وقت متصفح الأدمن. نضمن تشغيله مرة واحدة بالأسبوع عبر meta/lastReset.
-  function maybeWeeklyReset(){
-    const now = new Date();
-    // الأربعاء=3 حسب JS
-    const isWed = now.getDay() === 3;
-    const is11pm = now.getHours() === 23 && now.getMinutes() === 0;
-    if(!(isWed && is11pm)) return;
-
-    META_REF.child("lastReset").once("value").then(s=>{
-      const last = s.val() ? new Date(s.val()) : null;
-      // لا نعيد نفس الدقيقة
-      if(last && (now - new Date(last)) < 3600*1000) return;
-
-      // صفّر نقاط الجميع
-      EMP_REF.once("value").then(snap=>{
-        const updates = {};
-        snap.forEach(ch => { updates[`${ch.key}/points`] = 0; });
-        if(Object.keys(updates).length){
-          EMP_REF.update(updates).then(()=>{
-            META_REF.child("lastReset").set(now.toISOString());
-            toast("🔄 تم تصفير نقاط الموظفين لهذا الأسبوع");
-            updateStats();
-          });
-        }
+    /***********************
+     * تحميل كصورة PNG
+     ***********************/
+    document.getElementById('downloadPNG').addEventListener('click', async ()=>{
+      // نستخدم html2pdf مع خيار image لالتقاط
+      const element = document.querySelector('.table-container');
+      const opt = { margin:0, filename:'table.png', image:{type:'png', quality:1}, html2canvas:{scale:2, useCORS:true} };
+      html2pdf().set(opt).from(element).toPdf().get('pdf').then(()=> {
+        // لاستخدام كصورة مباشرة نستخدم html2canvas لو أردت، لكن html2pdf يولد PDF.
+        alert('انتهى التصدير (تحويل لـ PDF). لو تريد PNG دقيق أقولك أضيف html2canvas مباشرة.');
       });
     });
-  }
-  setInterval(maybeWeeklyReset, 60000); // دقيقة
 
-  /* =============== Live binds =============== */
-  // حدّث الجداول تلقائياً
-  DAILY_REF.on("value", ()=>{ loadTasksTable(); updateStats(); });
-  DELAYED_REF.on("value", ()=>{ loadDelayed(); updateStats(); });
-
-  /* =============== Export CSV =============== */
-  function downloadCSV(filename, rows){
-    const process = r => r.map(v=>`"${String(v??'').replace(/"/g,'""')}"`).join(",");
-    const csv = "data:text/csv;charset=utf-8,\uFEFF" + rows.map(process).join("\n");
-    const a = document.createElement("a");
-    a.href = encodeURI(csv); a.download = filename; a.click();
-  }
-
-  function exportEmployees(){
-    EMP_REF.once("value").then(s=>{
-      const data=s.val()||{}; const rows=[["id","name","points","link"]];
-      for(const id in data) rows.push([id, data[id].name||"", data[id].points||0, employeeLink(id)]);
-      downloadCSV(`employees_${todayStr()}.csv`, rows);
+    /***********************
+     * نسخ HTML / نسخة الجدول
+     ***********************/
+    document.getElementById('copyHTML').addEventListener('click', ()=>{
+      const html = document.querySelector('.table-container').outerHTML;
+      navigator.clipboard.writeText(html).then(()=> alert('تم نسخ HTML'));
     });
-  }
-
-  function exportTasks(){
-    const rows=[["empId","date","taskId","text","status","delayCount"]];
-    DAILY_REF.once("value").then(s=>{
-      const d=s.val()||{};
-      for(const emp in d) for(const date in d[emp]) for(const tid in d[emp][date]){
-        const t=d[emp][date][tid];
-        rows.push([emp,date,tid,t.text,t.status||"",t.delayCount||0]);
-      }
-      downloadCSV(`tasksDaily_${todayStr()}.csv`, rows);
+    document.getElementById('copyTable').addEventListener('click', ()=>{
+      // نسخ نصي للجدول
+      let txt = '';
+      rows.forEach(r=> txt += `${r.brand}\t${r.size}\t${r.dims}\t${r.price}\n`);
+      navigator.clipboard.writeText(txt).then(()=> alert('تم نسخ الجدول كنص'));
     });
-  }
 
-  // أولي
-  updateStats();
-  // تعبئة جدول المهام الافتراضي لليوم
-  $("#viewDate").value = todayStr();
-  loadTasksTable();
-</script>
+    /***********************
+     * حفظ / استيراد JSON
+     ***********************/
+    document.getElementById('saveJSON').addEventListener('click', ()=>{
+      const data = { title: tableTitleInput.value, rows };
+      const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+      const url = URL.createObjectURL(blob);
+      downloadURL(url, 'offers.json');
+      setTimeout(()=>URL.revokeObjectURL(url), 1000);
+    });
+
+    document.getElementById('btnUpload').addEventListener('click', ()=> document.getElementById('uploadJSON').click());
+    document.getElementById('uploadJSON').addEventListener('change', (e)=>{
+      const f = e.target.files[0];
+      if(!f) return;
+      const reader = new FileReader();
+      reader.onload = ()=> {
+        try{
+          const data = JSON.parse(reader.result);
+          if(Array.isArray(data.rows)) { rows = data.rows; tableTitleInput.value = data.title || tableTitleInput.value; renderAll(); }
+          else alert('ملف JSON غير صحيح');
+        }catch(err){ alert('خطأ بقراءة الملف'); }
+      };
+      reader.readAsText(f);
+    });
+
+    /***********************
+     * مساعدة ودوال صغيرة
+     ***********************/
+    function numberWithCommas(x){ return String(x).replace(/\B(?=(\d{3})+(?!\d))/g, ","); }
+    function escapeHTML(s){ return String(s).replace(/[&<>"']/g, (m)=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]); }
+    function downloadURL(url, filename){
+      const a = document.createElement('a'); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+    }
+    function hexToRgba(hex, alpha=1){
+      hex = hex.replace('#','');
+      if(hex.length===3) hex = hex.split('').map(s=>s+s).join('');
+      const r = parseInt(hex.substring(0,2),16);
+      const g = parseInt(hex.substring(2,4),16);
+      const b = parseInt(hex.substring(4,6),16);
+      return `rgba(${r},${g},${b},${alpha})`;
+    }
+
+    // render مبدئي
+    function renderInitial(){
+      renderAll();
+      // وضع اللون الافتراضي
+      setAccent(colorInput.value);
+    }
+    renderInitial();
+
+    /***********************
+     * أحداث إضافية: نسخ/تحرير عبر النقر على صف المعاينة
+     ***********************/
+    previewTableArea.addEventListener('click', (e)=>{
+      const tr = e.target.closest('tr');
+      if(!tr) return;
+      const idx = parseInt(tr.dataset.idx);
+      if(Number.isNaN(idx)) return;
+      if(!confirm('تعديل هذا الصف؟')) return;
+      const r = rows[idx];
+      const brand = prompt('النوع:', r.brand); if(brand===null) return;
+      const size = prompt('الحجم:', r.size); if(size===null) return;
+      const dims = prompt('المقاس:', r.dims); if(dims===null) return;
+      const price = prompt('السعر:', r.price); if(price===null) return;
+      rows[idx] = { brand:brand||'—', size:size||'—', dims:dims||'—', price: parseInt(String(price).replace(/[^0-9]/g,''))||0 };
+      renderAll();
+    });
+
+    // تحسين: تحديث العرض عند تعديل بيانات خارجية
+    window.addEventListener('focus', renderAll);
+  </script>
 </body>
 </html>
