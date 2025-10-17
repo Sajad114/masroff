@@ -3,606 +3,781 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>مولد جدول عروض (Liquid Glass)</title>
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet">
+<title>Liquid Glass Table Builder v2 — Turquoise Olive Edition</title>
+
+<!-- خطوط -->
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;700;900&display=swap" rel="stylesheet">
+
+<!-- مكتبات: SheetJS, html2canvas, html2pdf -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.2/html2pdf.bundle.min.js"></script>
+
 <style>
   :root{
-    --glass-bg: rgba(140,200,180,0.12);
-    --accent: #39c2a6; /* الافتراضي فيروزي-زيتوني */
-    --accent-weak: rgba(57,194,166,0.18);
-    --text: #ffffff;
-    --glass-border: rgba(180,255,220,0.3);
+    --accent: #39c2a6; /* فيروزي-زيتوني */
+    --accent-weak: rgba(57,194,166,0.16);
+    --glass-bg: rgba(140,200,180,0.10);
+    --glass-border: rgba(180,255,220,0.28);
+    --text: #e9fffb;
+    --card-bg: rgba(0,0,0,0.18);
+    --shadow: 0 10px 40px rgba(28, 120, 105, 0.12);
   }
-
-  *{box-sizing:border-box}
-  body{
-    margin:0;
-    font-family:'Tajawal',sans-serif;
-    background: linear-gradient(135deg,#112521,#0f2e2b 40%, #081613 100%);
-    color:var(--text);
-    min-height:100vh;
-    display:flex;
-    flex-direction:column;
-    gap:18px;
-    align-items:center;
-    padding:24px;
-  }
-
+  html,body{height:100%;margin:0;padding:0;font-family:'Tajawal',sans-serif;background:linear-gradient(135deg,#0b1f1a 0%, #092b27 40%, #071615 100%);color:var(--text);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  /* صفحة كاملة */
   .app {
-    width:100%;
-    max-width:1100px;
-  }
-
-  /* رأس الأدوات */
-  .toolbar {
-    display:flex;
-    gap:12px;
-    align-items:center;
-    justify-content:space-between;
-    margin-bottom:6px;
-    flex-wrap:wrap;
-  }
-
-  .controls {
-    display:flex;
-    gap:10px;
-    align-items:center;
-    flex-wrap:wrap;
-  }
-
-  .card {
-    background: rgba(255,255,255,0.03);
-    border-radius:12px;
-    padding:12px;
-    border:1px solid rgba(255,255,255,0.04);
-    box-shadow:0 6px 30px rgba(0,0,0,0.5);
-  }
-
-  .color-picker {
-    display:flex;
-    gap:8px;
-    align-items:center;
-  }
-
-  label.small { font-size:13px; color:rgba(255,255,255,0.8); margin-inline-end:6px; }
-
-  input[type="color"] { width:44px; height:34px; border-radius:8px; border:none; padding:0; cursor:pointer; }
-
-  button.btn{
-    background:linear-gradient(180deg,var(--accent), color-mix(in srgb, var(--accent) 60%, black 20%));
-    color:#012;
-    border:none;
-    padding:10px 14px;
-    border-radius:10px;
-    font-weight:700;
-    cursor:pointer;
-    box-shadow:0 6px 20px rgba(0,0,0,0.4);
-  }
-  button.ghost {
-    background:transparent;
-    color:var(--text);
-    border:1px solid rgba(255,255,255,0.08);
-    padding:8px 12px;
-    border-radius:10px;
-    cursor:pointer;
-  }
-
-  /* form اضافة صف */
-  .form-row {
-    display:flex;
-    gap:8px;
-    align-items:center;
-    flex-wrap:wrap;
-  }
-  .form-row input, .form-row select {
-    padding:8px 10px;
-    border-radius:8px;
-    border:1px solid rgba(255,255,255,0.06);
-    background: rgba(255,255,255,0.02);
-    color:var(--text);
-    min-width:110px;
-  }
-  .form-row input.small { min-width:94px; padding:7px; font-size:14px; }
-
-  /* القالب الزجاجي (preview) */
-  .preview-wrap {
-    margin-top:6px;
+    max-width:1200px;
+    margin:24px auto;
+    padding:18px;
     display:flex;
     gap:18px;
     align-items:flex-start;
-    flex-wrap:wrap;
+    justify-content:center;
   }
 
-  .table-container {
-    width:100%;
-    max-width:720px;
-    background: var(--glass-bg);
-    backdrop-filter: blur(20px) saturate(150%);
-    -webkit-backdrop-filter: blur(20px) saturate(150%);
-    border-radius:22px;
-    border:1px solid var(--glass-border);
-    box-shadow:0 0 60px color-mix(in srgb, var(--accent) 40%, transparent);
-    overflow:hidden;
+  /* اللوحة اليسرى — المعاينة */
+  .preview {
+    flex:1.1;
+    min-width:320px;
     position:relative;
-    padding:10px;
   }
 
-  /* تأثير سائل خلفي */
-  .table-container::before{
-    content:"";
-    position:absolute;
-    inset:-30% -30% -30% -30%;
-    background:
-      radial-gradient(circle at 20% 30%, color-mix(in srgb,var(--accent) 25%, transparent), transparent 30%),
-      radial-gradient(circle at 80% 70%, color-mix(in srgb,var(--accent) 15%, transparent), transparent 40%);
-    filter:blur(50px) saturate(160%);
+  /* خلفية مائية متحركة */
+  .liquid-bg {
+    position:fixed;
+    inset:0;
     z-index:0;
-    transform:translate3d(0,0,0);
-    animation:float 10s infinite alternate ease-in-out;
+    pointer-events:none;
+    overflow:hidden;
     opacity:0.9;
   }
-  @keyframes float{ from{transform:translateY(0)} to{transform:translateY(10px) rotate(2deg)} }
+  .wave {
+    position:absolute;
+    width:180%;
+    height:60%;
+    left:-40%;
+    top:-10%;
+    background: radial-gradient(60% 50% at 10% 10%, color-mix(in srgb,var(--accent) 20%, transparent), transparent 20%),
+                radial-gradient(80% 60% at 80% 90%, color-mix(in srgb,var(--accent) 12%, transparent), transparent 30%);
+    filter: blur(60px) saturate(150%);
+    transform: translate3d(0,0,0);
+    animation: floatWave 12s infinite alternate ease-in-out;
+  }
+  @keyframes floatWave{ from{transform:translateY(0) rotate(0deg)} to{transform:translateY(18px) rotate(1deg)} }
 
-  .table-content { position:relative; z-index:2; padding:8px; }
+  /* فقاعات */
+  .bubbles{ position:absolute; inset:auto 0 0 0; height:260px; z-index:0; pointer-events:none; overflow:visible }
+  .bubble{
+    position:absolute;
+    bottom:-30%;
+    border-radius:50%;
+    opacity:0.15;
+    background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.6), rgba(255,255,255,0.08));
+    box-shadow: 0 4px 30px rgba(0,0,0,0.2);
+    animation: rise 9s infinite linear;
+    filter: blur(6px) saturate(120%);
+  }
+  @keyframes rise{ 0%{transform: translateY(0) scale(.8)} 100%{transform: translateY(-380%) scale(1.05); opacity:0} }
 
-  h2.title {
+  /* الصفحة الداخلية (حاوية زجاجية) */
+  .panel {
+    position:relative;
+    z-index:2;
+    border-radius:18px;
+    background:var(--glass-bg);
+    backdrop-filter: blur(18px) saturate(150%);
+    -webkit-backdrop-filter: blur(18px) saturate(150%);
+    border:1px solid var(--glass-border);
+    box-shadow: var(--shadow);
+    padding:12px;
+    overflow:hidden;
+  }
+
+  /* عنوان */
+  .panel .title {
     text-align:center;
-    margin:10px 0 6px 0;
-    color: color-mix(in srgb, var(--accent) 80%, white 20%);
-    text-shadow: 0 0 20px color-mix(in srgb, var(--accent) 50%, transparent);
+    color: color-mix(in srgb, var(--accent) 70%, white 30%);
+    font-weight:800;
     font-size:20px;
+    margin:6px 0 12px;
+    text-shadow:0 0 18px color-mix(in srgb,var(--accent) 40%,transparent);
   }
 
-  table.stylish {
-    width:100%;
-    border-collapse:collapse;
-    text-align:center;
-    font-size:16px;
-  }
-  table.stylish th, table.stylish td {
-    padding:12px 10px;
-  }
+  /* الجدول */
+  .table-wrap { padding:6px; }
+  table.stylish { width:100%; border-collapse:collapse; text-align:center; font-size:15px; min-width:280px }
+  table.stylish th, table.stylish td { padding:12px 10px; vertical-align:middle }
   table.stylish th {
     background: var(--accent-weak);
-    color: color-mix(in srgb,var(--accent) 80%, white 20%);
+    color: color-mix(in srgb,var(--accent) 70%, white 40%);
     font-weight:700;
-    font-size:15px;
-    text-shadow:0 0 8px rgba(0,0,0,0.2);
+    font-size:14px;
+    border-bottom:1px solid rgba(255,255,255,0.06);
     backdrop-filter: blur(6px);
   }
   table.stylish td {
     color:var(--text);
     border-bottom:1px solid rgba(255,255,255,0.04);
-    vertical-align:middle;
   }
-  table.stylish tr:nth-child(even) td{
-    background: rgba(255,255,255,0.02);
-  }
-  .size-small {
-    display:block;
-    font-size:13px;
-    color: rgba(220,255,235,0.8);
-    margin-top:6px;
-    opacity:0.9;
+  table.stylish tr:nth-child(even) td{ background: rgba(255,255,255,0.02) }
+  table.stylish tr:hover td{ background: color-mix(in srgb,var(--accent) 10%, rgba(255,255,255,0.02)); transform: scale(1.01); transition: transform .18s ease }
+  .size-small{ display:block; font-size:12px; color: rgba(220,255,235,0.85); margin-top:6px }
+
+  /* تذييل الجدول */
+  .table-footer {
+    margin-top:10px;
+    padding:10px;
+    border-radius:12px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.006));
+    border:1px solid rgba(255,255,255,0.03);
+    color:rgba(235,255,245,0.9);
+    font-size:14px;
   }
 
-  /* إعدادات الجانب */
-  .side-panel {
-    min-width:260px;
-    max-width:320px;
-    width:100%;
-    background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent);
+  /* اللوحة اليمنى — الأدوات */
+  .side {
+    width:360px;
+    min-width:280px;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+  }
+  .card {
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.006));
     border-radius:12px;
     padding:12px;
     border:1px solid rgba(255,255,255,0.03);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.45);
   }
 
-  .side-panel h3 { margin:0 0 8px 0; font-size:16px; color:rgba(255,255,255,0.9) }
-
-  .list-rows { max-height:260px; overflow:auto; display:flex; flex-direction:column; gap:8px; margin-top:8px; }
-
-  .row-item {
-    display:flex; justify-content:space-between; align-items:center;
-    gap:8px; background: rgba(0,0,0,0.12); padding:8px; border-radius:8px;
-    border:1px solid rgba(255,255,255,0.03);
+  /* حقول الإدخال */
+  .row{ display:flex; gap:8px; align-items:center; flex-wrap:wrap }
+  input[type="text"], input[type="number"], select, textarea {
+    padding:10px 12px; border-radius:8px; border:1px solid rgba(255,255,255,0.06);
+    background: rgba(0,0,0,0.12); color:var(--text); font-size:14px; min-width:0;
   }
-  .row-item .meta { text-align:left; font-size:13px; color:rgba(255,255,255,0.9) }
-  .row-actions { display:flex; gap:6px }
+  textarea{ min-height:64px; resize:vertical }
 
+  label { font-size:13px; color:rgba(255,255,255,0.9); margin-bottom:6px; display:block }
+
+  /* أزرار */
+  .btn {
+    background: linear-gradient(180deg,var(--accent), color-mix(in srgb,var(--accent) 60%, black 16%));
+    border: none; padding:10px 12px; border-radius:10px; font-weight:700; cursor:pointer; color:#012;
+    box-shadow:0 8px 24px rgba(0,0,0,0.35)
+  }
+  .btn.ghost { background:transparent; color:var(--text); border:1px solid rgba(255,255,255,0.06) }
+  .small { padding:8px 10px; font-size:13px }
+
+  /* قائمة الصفوف */
+  .list-rows { max-height:280px; overflow:auto; display:flex; flex-direction:column; gap:8px; margin-top:6px }
+  .row-item { display:flex; justify-content:space-between; gap:8px; padding:8px; border-radius:8px; background:rgba(0,0,0,0.12); border:1px solid rgba(255,255,255,0.02) }
+  .row-item .meta { text-align:left; font-size:13px }
+  .row-item .actions { display:flex; gap:6px }
+
+  /* خيارات تصدير */
+  .exports { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px }
+
+  /* سويشر الوضع */
+  .toggle { display:inline-flex; align-items:center; gap:6px; cursor:pointer }
+
+  /* استجابة */
+  @media (max-width:1100px){
+    .app{ flex-direction:column; padding:12px }
+    .side { width:100% }
+    .preview { width:100% }
+  }
+
+  /* tooltip صغير */
   .muted { color: rgba(255,255,255,0.6); font-size:13px }
 
-  /* أزرار تصدير */
-  .exports { display:flex; gap:8px; margin-top:12px; flex-wrap:wrap }
-
-  /* responsive */
-  @media (max-width:980px){
-    .preview-wrap { flex-direction:column; align-items:center }
-    .side-panel { max-width:100% }
-  }
+  /* تأثيرات إضافية */
+  .pulse { animation: pulseGlow 2s infinite; }
+  @keyframes pulseGlow { 0%{ box-shadow:0 6px 24px color-mix(in srgb,var(--accent) 18%, transparent) } 50%{ box-shadow:0 10px 40px color-mix(in srgb,var(--accent) 30%, transparent) } 100%{ box-shadow:0 6px 24px color-mix(in srgb,var(--accent) 18%, transparent) } }
 </style>
 </head>
 <body>
-  <div class="app">
 
-    <div class="toolbar">
-      <div class="controls card">
-        <div style="display:flex;gap:8px;align-items:center;">
-          <label class="small">لون أساسي</label>
-          <div class="color-picker">
-            <input id="colorInput" type="color" value="#39c2a6" title="غير اللون">
-            <select id="preset" style="padding:8px;border-radius:8px;">
-              <option value="#39c2a6">فيروزي-زيتوني (افتراضي)</option>
-              <option value="#00b3ff">فيروزي ساطع</option>
-              <option value="#6fcf97">أخضر فاتح</option>
-              <option value="#8a6b9b">بنفسجي هادئ</option>
-              <option value="#ffb86b">برتقالي دافئ</option>
-            </select>
-          </div>
-        </div>
+<!-- خلفية مائية و فقاعات -->
+<div class="liquid-bg" aria-hidden="true">
+  <div class="wave"></div>
+  <div class="bubbles" id="bubblesHolder"></div>
+</div>
 
-        <div style="display:flex;gap:8px;align-items:center;">
-          <label class="small">اسم العنوان</label>
-          <input id="tableTitle" type="text" placeholder="عروض شاشات سامسونك" style="min-width:220px" value="عروض شاشات سامسونك">
-        </div>
+<div class="app" role="application" aria-label="Liquid Glass Table Builder">
+
+  <!-- المعاينة -->
+  <div class="preview panel">
+    <div style="display:flex;gap:8px;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-weight:800;color: color-mix(in srgb,var(--accent) 78%, white 22%);">Liquid Glass Table Builder v2</div>
+        <div class="muted" style="font-size:13px">تصميم مائي فيروزي-زيتوني — معاينة وتصدير</div>
       </div>
-
-      <div style="display:flex;gap:8px;align-items:center;">
-        <button id="downloadXLS" class="btn">تحميل Excel</button>
-        <button id="downloadPDF" class="btn">تحميل PDF</button>
-        <button id="downloadPNG" class="ghost">تحميل صورة</button>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button id="saveLocalBtn" class="btn small">حفظ الآن</button>
+        <button id="clearLocalBtn" class="btn ghost small">استعادة افتراضية</button>
       </div>
     </div>
 
-    <!-- form اضافة -->
-    <div class="card form-row" style="justify-content:space-between">
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <input id="inpBrand" placeholder="النوع (مثال: سامسونج)" />
-        <input id="inpSize" placeholder="الحجم (مثال: 43 بوصة)" />
-        <input id="inpDimensions" placeholder="المقاس (مثال: 95×55 سم)" />
-        <input id="inpPrice" placeholder="السعر (مثال: 150000)" class="small" />
-        <button id="addRow" class="btn">أضف الصف</button>
-        <button id="clearAll" class="ghost">فراغ الجدول</button>
-      </div>
+    <div class="table-wrap" id="exportArea"> <!-- this area will be exported -->
+      <div class="panel" style="margin-top:12px; padding:14px;">
+        <div class="title" id="previewTitle">عروض شاشات سامسونج</div>
 
-      <div style="display:flex;gap:8px;align-items:center;">
-        <input id="search" placeholder="بحث..." style="padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);min-width:160px;">
-      </div>
-    </div>
-
-    <!-- preview + side -->
-    <div class="preview-wrap">
-      <div class="table-container">
-        <div class="table-content">
-          <h2 class="title" id="previewTitle">عروض شاشات سامسونج</h2>
-          <div id="previewTableArea">
-            <!-- table rendered by JS -->
-          </div>
+        <div id="tableContainer">
+          <!-- جدول يُولد ديناميكياً -->
         </div>
-      </div>
 
-      <div class="side-panel card">
-        <h3>الصفوف الحالية</h3>
-        <div class="list-rows" id="rowsList"></div>
-
-        <div style="margin-top:12px;">
-          <div class="muted">حفظ / استيراد</div>
-          <div style="display:flex;gap:8px;margin-top:8px;">
-            <button id="saveJSON" class="ghost">تنزيل JSON</button>
-            <input id="uploadJSON" type="file" accept=".json" style="display:none">
-            <button id="btnUpload" class="ghost">استيراد JSON</button>
-          </div>
-
-          <div class="exports">
-            <button id="copyHTML" class="ghost">نسخ HTML</button>
-            <button id="copyTable" class="ghost">نسخ جدول</button>
-          </div>
+        <div class="table-footer" id="tableFooter">
+          <!-- تذييل الجدول يظهر هنا -->
         </div>
       </div>
     </div>
 
   </div>
 
-  <!-- المكتبات (CDN) -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.2/html2pdf.bundle.min.js"></script>
+  <!-- الأدوات -->
+  <div class="side">
 
-  <script>
-    /***********************
-     * بيانات داخلية (Model)
-     ***********************/
-    let rows = [
-      // مثال مبدئي
-      { brand:"سامسونك", size:"43 بوصة", dims:"95×55 سم", price:150000 },
-      { brand:"سامسونك", size:"50 بوصة", dims:"109×66 سم", price:235000 },
-      { brand:"سامسونك", size:"55 بوصة", dims:"112×68 سم", price:245000 },
-      { brand:"سامسونك", size:"60 بوصة", dims:"122×74 سم", price:299000 },
-      { brand:"سامسونك", size:"70 بوصة", dims:"—", price:429000 },
-      { brand:"سامسونك", size:"75 بوصة", dims:"—", price:550000 }
-    ];
+    <!-- إضافة صف -->
+    <div class="card">
+      <label>أضف صف جديد</label>
+      <div class="row" style="gap:10px">
+        <input id="inpBrand" type="text" placeholder="النوع (مثال: سامسونج)" />
+        <input id="inpSize" type="text" placeholder="الحجم (مثال: 43 بوصة)" style="width:120px" />
+      </div>
+      <div class="row" style="margin-top:10px;gap:10px">
+        <input id="inpDims" type="text" placeholder="المقاس (مثال: 95×55 سم)" style="flex:1" />
+        <input id="inpPrice" type="text" placeholder="السعر (مثال: 150000)" style="width:140px" />
+      </div>
+      <div class="row" style="margin-top:10px;justify-content:space-between">
+        <div style="display:flex;gap:8px">
+          <button id="addRow" class="btn">أضف</button>
+          <button id="addSample" class="btn ghost">أضف عينات</button>
+        </div>
+        <div style="display:flex;gap:6px">
+          <input id="search" placeholder="بحث..." style="padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.06)" />
+        </div>
+      </div>
+    </div>
 
-    /***********************
-     * عناصر الواجهة
-     ***********************/
-    const previewTableArea = document.getElementById('previewTableArea');
-    const rowsList = document.getElementById('rowsList');
-    const addRowBtn = document.getElementById('addRow');
-    const clearAllBtn = document.getElementById('clearAll');
-    const inpBrand = document.getElementById('inpBrand');
-    const inpSize = document.getElementById('inpSize');
-    const inpDims = document.getElementById('inpDimensions');
-    const inpPrice = document.getElementById('inpPrice');
-    const searchInput = document.getElementById('search');
-    const colorInput = document.getElementById('colorInput');
-    const preset = document.getElementById('preset');
-    const previewTitle = document.getElementById('previewTitle');
-    const tableTitleInput = document.getElementById('tableTitle');
+    <!-- التذييل -->
+    <div class="card">
+      <label>تذييل الجدول (رقم هاتف أو ملاحظة)</label>
+      <textarea id="footerInput" placeholder="مثال: للحجز اتصل على 077xxxxxxx أو ملاحظة"></textarea>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button id="applyFooter" class="btn small">تطبيق التذييل</button>
+        <button id="clearFooter" class="btn ghost small">مسح التذييل</button>
+      </div>
+    </div>
 
-    /***********************
-     * تهيئة / ريندر
-     ***********************/
-    function renderTable(filter=""){
-      // فلترة
-      const filtered = rows.filter(r=>{
-        const q = filter.trim().toLowerCase();
-        if(!q) return true;
-        return (r.brand + " " + r.size + " " + r.dims + " " + r.price).toLowerCase().includes(q);
-      });
+    <!-- الاعدادات و الألوان -->
+    <div class="card">
+      <label>الألوان / الثيم</label>
+      <div class="row" style="align-items:center;gap:8px">
+        <input id="colorInput" type="color" value="#39c2a6" title="غير اللون" />
+        <select id="preset" style="padding:8px;border-radius:8px;">
+          <option value="#39c2a6">فيروزي-زيتوني (افتراضي)</option>
+          <option value="#00b3ff">فيروزي ساطع</option>
+          <option value="#6fcf97">أخضر فاتح</option>
+          <option value="#8a6b9b">بنفسجي هادئ</option>
+          <option value="#ffb86b">برتقالي دافئ</option>
+        </select>
+        <div style="margin-left:auto;display:flex;gap:6px;align-items:center">
+          <label class="muted">الوضع</label>
+          <button id="toggleMode" class="btn ghost small">تبديل لــ Dark/Light</button>
+        </div>
+      </div>
 
-      const table = document.createElement('table');
-      table.className = 'stylish';
-      table.innerHTML = `
-        <thead>
-          <tr>
-            <th>النوع</th>
-            <th>الحجم</th>
-            <th>السعر</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${filtered.map((r,idx)=>`
-            <tr data-idx="${idx}">
-              <td>${escapeHTML(r.brand)}</td>
-              <td>
-                ${escapeHTML(r.size)}
-                <span class="size-small">${escapeHTML(r.dims)}</span>
-              </td>
-              <td>${numberWithCommas(r.price)}</td>
-            </tr>
-          `).join('')}
-        </tbody>
-      `;
-      previewTableArea.innerHTML = '';
-      previewTableArea.appendChild(table);
-    }
+      <div style="margin-top:10px" class="muted">خيارات اضافية</div>
+      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+        <button id="autoSaveToggle" class="btn ghost small">تعطيل الحفظ التلقائي</button>
+        <button id="clearAll" class="btn ghost small">مسح كل الصفوف</button>
+      </div>
+    </div>
 
-    function renderList(){
-      rowsList.innerHTML = '';
-      rows.forEach((r,i)=>{
-        const div = document.createElement('div');
-        div.className = 'row-item';
-        div.innerHTML = `
-          <div class="meta">
-            <div style="font-weight:700">${escapeHTML(r.brand)} — ${escapeHTML(r.size)}</div>
-            <div class="muted">${escapeHTML(r.dims)} • ${numberWithCommas(r.price)}</div>
-          </div>
-          <div class="row-actions">
-            <button class="ghost" data-act="edit" data-i="${i}">تعديل</button>
-            <button class="ghost" data-act="del" data-i="${i}">حذف</button>
-          </div>
-        `;
-        rowsList.appendChild(div);
-      });
-    }
+    <!-- قائمة الصفوف -->
+    <div class="card">
+      <label>الصفوف الحالية</label>
+      <div class="list-rows" id="rowsList"></div>
 
-    function syncPreviewTitle(){ previewTitle.textContent = tableTitleInput.value || 'عروض' }
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px">
+        <div class="muted">حفظ / استيراد</div>
+        <div style="display:flex;gap:8px">
+          <button id="saveJSON" class="btn ghost small">تنزيل JSON</button>
+          <input id="uploadJSON" type="file" accept=".json" style="display:none">
+          <button id="btnUpload" class="btn ghost small">استيراد JSON</button>
+        </div>
+      </div>
 
-    // أول ريندر
+      <div class="exports">
+        <button id="downloadXLS" class="btn small">تحميل Excel</button>
+        <button id="downloadPDF" class="btn small">تحميل PDF</button>
+        <button id="downloadPNG" class="btn small">تحميل PNG</button>
+        <button id="downloadIMG" class="btn ghost small">حفظ صورة (PNG)</button>
+      </div>
+    </div>
+
+    <!-- نسخ و خيارات -->
+    <div class="card">
+      <label>نسخ / إعدادات تصدير</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button id="copyHTML" class="btn ghost small">نسخ HTML</button>
+        <button id="copyText" class="btn ghost small">نسخ نص الجدول</button>
+        <button id="exportPricesOnly" class="btn ghost small">تصدير الأسعار فقط (PDF)</button>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+/* ------------------------------
+   Model / بيانات افتراضية
+   ------------------------------ */
+let rows = [
+  { brand:"سامسونك", size:"43 بوصة", dims:"95×55 سم", price:150000 },
+  { brand:"سامسونك", size:"50 بوصة", dims:"109×66 سم", price:235000 },
+  { brand:"سامسونك", size:"55 بوصة", dims:"112×68 سم", price:245000 },
+  { brand:"سامسونك", size:"60 بوصة", dims:"122×74 سم", price:299000 },
+  { brand:"سامسونك", size:"70 بوصة", dims:"—", price:429000 },
+  { brand:"سامسونك", size:"75 بوصة", dims:"—", price:550000 }
+];
+
+let footerText = "الأسعار تشمل ضمان سنة وتوصيل مجاني 🚚";
+let autoSave = true;
+
+/* عناصر DOM */
+const tableContainer = document.getElementById('tableContainer');
+const rowsList = document.getElementById('rowsList');
+const previewTitle = document.getElementById('previewTitle');
+const tableFooter = document.getElementById('tableFooter');
+const inpBrand = document.getElementById('inpBrand');
+const inpSize = document.getElementById('inpSize');
+const inpDims = document.getElementById('inpDims');
+const inpPrice = document.getElementById('inpPrice');
+const addRowBtn = document.getElementById('addRow');
+const addSampleBtn = document.getElementById('addSample');
+const searchInput = document.getElementById('search');
+const colorInput = document.getElementById('colorInput');
+const preset = document.getElementById('preset');
+const footerInput = document.getElementById('footerInput');
+const applyFooterBtn = document.getElementById('applyFooter');
+const clearFooterBtn = document.getElementById('clearFooter');
+
+const downloadXLS = document.getElementById('downloadXLS');
+const downloadPDF = document.getElementById('downloadPDF');
+const downloadPNG = document.getElementById('downloadPNG');
+const downloadIMG = document.getElementById('downloadIMG');
+
+const saveJSONbtn = document.getElementById('saveJSON');
+const uploadJSON = document.getElementById('uploadJSON');
+const btnUpload = document.getElementById('btnUpload');
+const copyHTML = document.getElementById('copyHTML');
+const copyTextBtn = document.getElementById('copyText');
+const exportPricesOnly = document.getElementById('exportPricesOnly');
+const saveLocalBtn = document.getElementById('saveLocalBtn');
+const clearLocalBtn = document.getElementById('clearLocalBtn');
+const clearAllBtn = document.getElementById('clearAll');
+const autoSaveToggle = document.getElementById('autoSaveToggle');
+const toggleMode = document.getElementById('toggleMode');
+
+/* init */
+function numberWithCommas(x){ return String(x).replace(/\B(?=(\d{3})+(?!\d))/g,","); }
+function escapeHTML(s){ return String(s).replace(/[&<>"']/g,(m)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]); }
+function hexToRgba(hex,alpha=1){ hex = hex.replace('#',''); if(hex.length===3) hex=hex.split('').map(c=>c+c).join(''); const r=parseInt(hex.slice(0,2),16), g=parseInt(hex.slice(2,4),16), b=parseInt(hex.slice(4,6),16); return `rgba(${r},${g},${b},${alpha})` }
+
+/* Auto-save to localStorage */
+function saveToLocal(){
+  const data = { rows, footerText, accent:getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#39c2a6' };
+  localStorage.setItem('lg_builder_v2', JSON.stringify(data));
+  showTempToast('تم الحفظ محلياً');
+}
+function loadFromLocal(){
+  const raw = localStorage.getItem('lg_builder_v2');
+  if(!raw) return false;
+  try{
+    const data = JSON.parse(raw);
+    if(Array.isArray(data.rows)) rows = data.rows;
+    footerText = data.footerText || footerText;
+    if(data.accent) setAccent(data.accent);
     renderAll();
+    return true;
+  }catch(e){ console.error(e); return false }
+}
 
-    function renderAll(){
-      syncPreviewTitle();
-      renderTable(searchInput.value);
-      renderList();
-      applyAccentToCSS();
+/* apply accent */
+function setAccent(hex){
+  document.documentElement.style.setProperty('--accent', hex);
+  document.documentElement.style.setProperty('--accent-weak', hexToRgba(hex,0.16));
+  document.documentElement.style.setProperty('--glass-border', hexToRgba(hex,0.28));
+}
+colorInput.addEventListener('input', ()=> { setAccent(colorInput.value); if(autoSave) saveToLocal(); });
+preset.addEventListener('change', ()=> { colorInput.value = preset.value; setAccent(preset.value); if(autoSave) saveToLocal(); });
+
+/* bubbles generator */
+function createBubbles(){
+  const holder = document.getElementById('bubblesHolder');
+  holder.innerHTML = '';
+  for(let i=0;i<12;i++){
+    const b = document.createElement('div');
+    b.className='bubble';
+    const size = Math.floor(Math.random()*120)+40;
+    b.style.width = size+'px';
+    b.style.height = size+'px';
+    b.style.left = Math.floor(Math.random()*100)+'%';
+    b.style.animationDuration = (8+Math.random()*8)+'s';
+    b.style.opacity = (0.08+Math.random()*0.25).toFixed(2);
+    b.style.bottom = (Math.random()*10-30)+'%';
+    b.style.transform = `translateY(0) scale(${0.9+Math.random()*0.4})`;
+    holder.appendChild(b);
+  }
+}
+createBubbles();
+
+/* Render Table + Footer + List */
+function renderTable(filter=""){
+  const q = String(filter||"").trim().toLowerCase();
+  const filtered = rows.filter(r => (r.brand + ' ' + r.size + ' ' + r.dims + ' ' + r.price).toLowerCase().includes(q));
+  const table = document.createElement('table');
+  table.className = 'stylish';
+  table.innerHTML = `
+    <thead>
+      <tr><th>النوع</th><th>الحجم</th><th>السعر</th></tr>
+    </thead>
+    <tbody>
+      ${filtered.map((r, idx) => `
+        <tr data-idx="${idx}">
+          <td>${escapeHTML(r.brand)}</td>
+          <td>${escapeHTML(r.size)}<span class="size-small">${escapeHTML(r.dims)}</span></td>
+          <td>${numberWithCommas(r.price)}</td>
+        </tr>
+      `).join('')}
+    </tbody>
+  `;
+  tableContainer.innerHTML = '';
+  tableContainer.appendChild(table);
+
+  // footer
+  tableFooter.innerHTML = escapeHTML(footerText || '');
+}
+
+/* Render side list */
+function renderList(){
+  rowsList.innerHTML = '';
+  rows.forEach((r,i)=>{
+    const div = document.createElement('div');
+    div.className = 'row-item';
+    div.innerHTML = `
+      <div class="meta">
+        <div style="font-weight:700">${escapeHTML(r.brand)} — ${escapeHTML(r.size)}</div>
+        <div class="muted">${escapeHTML(r.dims)} • ${numberWithCommas(r.price)}</div>
+      </div>
+      <div class="actions">
+        <button data-i="${i}" class="btn ghost small editBtn">تعديل</button>
+        <button data-i="${i}" class="btn ghost small delBtn">حذف</button>
+      </div>
+    `;
+    rowsList.appendChild(div);
+  });
+}
+
+/* initial render */
+function renderAll(){
+  renderTable(searchInput.value);
+  renderList();
+  document.getElementById('previewTitle').textContent = 'عروض شاشات سامسونج';
+  footerInput.value = footerText;
+}
+
+/* events: add row */
+addRowBtn.addEventListener('click', ()=>{
+  const brand = inpBrand.value.trim() || '—';
+  const size = inpSize.value.trim() || '—';
+  const dims = inpDims.value.trim() || '—';
+  const price = parseInt(String(inpPrice.value).replace(/[^0-9]/g,'')) || 0;
+  rows.push({ brand, size, dims, price });
+  inpBrand.value=''; inpSize.value=''; inpDims.value=''; inpPrice.value='';
+  renderAll(); if(autoSave) saveToLocal();
+});
+
+/* add sample */
+addSampleBtn.addEventListener('click', ()=>{
+  rows = rows.concat([
+    { brand:"ناشونال", size:"32 بوصة", dims:"73×43 سم", price:99000 },
+    { brand:"ناشونال", size:"43 بوصة", dims:"95×55 سم", price:169000 }
+  ]);
+  renderAll(); if(autoSave) saveToLocal();
+});
+
+/* edit & delete from list (event delegation) */
+rowsList.addEventListener('click', (e)=>{
+  const btn = e.target.closest('button');
+  if(!btn) return;
+  const i = Number(btn.dataset.i);
+  if(btn.classList.contains('delBtn')){
+    if(confirm('هل تريد حذف هذا الصف؟')){
+      rows.splice(i,1); renderAll(); if(autoSave) saveToLocal();
     }
+  } else if(btn.classList.contains('editBtn')){
+    const r = rows[i];
+    const brand = prompt('النوع:', r.brand); if(brand===null) return;
+    const size = prompt('الحجم:', r.size); if(size===null) return;
+    const dims = prompt('المقاس:', r.dims); if(dims===null) return;
+    const price = prompt('السعر:', r.price); if(price===null) return;
+    rows[i] = { brand:brand||'—', size:size||'—', dims:dims||'—', price: parseInt(String(price).replace(/[^0-9]/g,''))||0 };
+    renderAll(); if(autoSave) saveToLocal();
+  }
+});
 
-    /***********************
-     * أحداث الواجهة
-     ***********************/
-    addRowBtn.addEventListener('click', ()=>{
-      const brand = inpBrand.value.trim() || '—';
-      const size = inpSize.value.trim() || '—';
-      const dims = inpDims.value.trim() || '—';
-      const price = parseInt(String(inpPrice.value).replace(/[^0-9]/g,'')) || 0;
-      rows.push({brand,size,dims,price});
-      // تفريغ الحقول
-      inpBrand.value=''; inpSize.value=''; inpDims.value=''; inpPrice.value='';
-      renderAll();
-    });
+/* search */
+searchInput.addEventListener('input', ()=> renderTable(searchInput.value));
 
-    clearAllBtn.addEventListener('click', ()=>{
-      if(!confirm('متأكد تريد تفريغ كل الصفوف؟')) return;
-      rows = []; renderAll();
-    });
+/* footer handlers */
+applyFooterBtn.addEventListener('click', ()=>{
+  footerText = footerInput.value.trim();
+  renderAll(); if(autoSave) saveToLocal();
+});
+clearFooterBtn.addEventListener('click', ()=>{ footerText=''; footerInput.value=''; renderAll(); if(autoSave) saveToLocal(); });
 
-    rowsList.addEventListener('click', (e)=>{
-      const btn = e.target.closest('button');
-      if(!btn) return;
-      const i = parseInt(btn.dataset.i);
-      const act = btn.dataset.act;
-      if(act === 'del'){
-        rows.splice(i,1); renderAll();
-      } else if(act === 'edit'){
-        // فتح مربع تعديل بسيط باستخدام prompt (سهل وسريع)
-        const r = rows[i];
-        const brand = prompt('النوع:', r.brand); if(brand===null) return;
-        const size = prompt('الحجم:', r.size); if(size===null) return;
-        const dims = prompt('المقاس:', r.dims); if(dims===null) return;
-        const price = prompt('السعر:', r.price); if(price===null) return;
-        rows[i] = { brand: brand.trim()||'—', size:size.trim()||'—', dims:dims.trim()||'—', price: parseInt(String(price).replace(/[^0-9]/g,''))||0 };
-        renderAll();
-      }
-    });
+/* save json */
+saveJSONbtn.addEventListener('click', ()=>{
+  const data = { rows, footerText, accent:getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() };
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  downloadURL(url, 'offers.json');
+  setTimeout(()=> URL.revokeObjectURL(url),1200);
+});
 
-    searchInput.addEventListener('input', ()=> renderTable(searchInput.value));
-    tableTitleInput.addEventListener('input', syncPreviewTitle);
+/* upload json */
+btnUpload.addEventListener('click', ()=> uploadJSON.click());
+uploadJSON.addEventListener('change', (e)=>{
+  const f = e.target.files[0];
+  if(!f) return;
+  const reader = new FileReader();
+  reader.onload = ()=> {
+    try{
+      const d = JSON.parse(reader.result);
+      if(Array.isArray(d.rows)){ rows = d.rows; footerText = d.footerText || footerText; if(d.accent) setAccent(d.accent); renderAll(); if(autoSave) saveToLocal(); }
+      else alert('ملف JSON غير صحيح');
+    }catch(err){ alert('خطأ بقراءة JSON'); }
+  };
+  reader.readAsText(f);
+});
 
-    // تغيير اللون
-    colorInput.addEventListener('input', (e)=>{
-      const c = e.target.value;
-      setAccent(c);
-    });
-    preset.addEventListener('change', ()=> {
-      const c = preset.value;
-      colorInput.value = c;
-      setAccent(c);
-    });
+/* copy HTML & text */
+copyHTML.addEventListener('click', async ()=>{
+  const html = document.querySelector('.table-wrap').outerHTML;
+  await navigator.clipboard.writeText(html);
+  showTempToast('تم نسخ HTML');
+});
+copyTextBtn.addEventListener('click', async ()=>{
+  let txt = '';
+  rows.forEach(r=> txt += `${r.brand}\t${r.size}\t${r.dims}\t${r.price}\n`);
+  await navigator.clipboard.writeText(txt);
+  showTempToast('تم نسخ نص الجدول');
+});
 
-    function setAccent(hex){
-      document.documentElement.style.setProperty('--accent', hex);
-      // توليد بقية الvars بناء على hex
-      document.documentElement.style.setProperty('--accent-weak', hexToRgba(hex,0.16));
-      document.documentElement.style.setProperty('--glass-border', hexToRgba(hex,0.25));
-      applyAccentToCSS();
-    }
+/* export Excel */
+downloadXLS.addEventListener('click', ()=>{
+  const aoa = [['النوع','الحجم','المقاس','السعر']];
+  rows.forEach(r=> aoa.push([r.brand, r.size, r.dims, r.price]));
+  if(footerText) aoa.push(['','', 'ملاحظة', footerText]);
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Offers');
+  const wbout = XLSX.write(wb, { bookType:'xlsx', type:'array' });
+  const blob = new Blob([wbout], { type: 'application/octet-stream' });
+  const url = URL.createObjectURL(blob);
+  downloadURL(url, 'offers.xlsx');
+  setTimeout(()=> URL.revokeObjectURL(url),1200);
+});
 
-    function applyAccentToCSS(){
-      // تغيير تأثير الزل في الظلال عبر ضبط box-shadow إذا احتجنا
-      // (هنا فقط نترك المتغيرات، الـ CSS يستخدمها)
-    }
+/* export PDF (full preview) */
+downloadPDF.addEventListener('click', ()=> {
+  const element = document.querySelector('.table-wrap');
+  const opt = {
+    margin:0.4,
+    filename: 'offers.pdf',
+    image:{type:'jpeg', quality:0.98},
+    html2canvas:{scale:2, useCORS:true, logging:false},
+    jsPDF:{unit:'in', format:'a4', orientation:'portrait'}
+  };
+  html2pdf().set(opt).from(element).save();
+});
 
-    /***********************
-     * تصدير Excel (SheetJS)
-     ***********************/
-    document.getElementById('downloadXLS').addEventListener('click', ()=>{
-      // تحويل إلى مصفوفة
-      const aoa = [
-        ['النوع','الحجم','المقاس','السعر']
-      ];
-      rows.forEach(r=> aoa.push([r.brand, r.size, r.dims, r.price]));
-      const ws = XLSX.utils.aoa_to_sheet(aoa);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
-      const wbout = XLSX.write(wb, {bookType:'xlsx', type:'array'});
-      const blob = new Blob([wbout], {type:'application/octet-stream'});
+/* export PNG (via html2canvas) */
+downloadPNG.addEventListener('click', async ()=>{
+  const element = document.querySelector('.table-wrap');
+  html2canvas(element, { scale:2, useCORS:true, backgroundColor: null }).then(canvas=>{
+    canvas.toBlob(blob=>{
       const url = URL.createObjectURL(blob);
-      downloadURL(url, 'offers.xlsx');
-      setTimeout(()=>URL.revokeObjectURL(url), 1000);
-    });
+      downloadURL(url, 'offers.png');
+      setTimeout(()=> URL.revokeObjectURL(url),1200);
+    }, 'image/png', 0.95);
+  });
+});
 
-    /***********************
-     * تصدير PDF (html2pdf)
-     ***********************/
-    document.getElementById('downloadPDF').addEventListener('click', ()=>{
-      const element = document.querySelector('.table-container');
-      const opt = {
-        margin:0.4,
-        filename: (tableTitleInput.value||'offers') + '.pdf',
-        image:{type:'jpeg', quality:0.98},
-        html2canvas:{scale:2, useCORS:true},
-        jsPDF:{unit:'in', format:'a4', orientation:'portrait'}
-      };
-      html2pdf().set(opt).from(element).save();
-    });
-
-    /***********************
-     * تحميل كصورة PNG
-     ***********************/
-    document.getElementById('downloadPNG').addEventListener('click', async ()=>{
-      // نستخدم html2pdf مع خيار image لالتقاط
-      const element = document.querySelector('.table-container');
-      const opt = { margin:0, filename:'table.png', image:{type:'png', quality:1}, html2canvas:{scale:2, useCORS:true} };
-      html2pdf().set(opt).from(element).toPdf().get('pdf').then(()=> {
-        // لاستخدام كصورة مباشرة نستخدم html2canvas لو أردت، لكن html2pdf يولد PDF.
-        alert('انتهى التصدير (تحويل لـ PDF). لو تريد PNG دقيق أقولك أضيف html2canvas مباشرة.');
-      });
-    });
-
-    /***********************
-     * نسخ HTML / نسخة الجدول
-     ***********************/
-    document.getElementById('copyHTML').addEventListener('click', ()=>{
-      const html = document.querySelector('.table-container').outerHTML;
-      navigator.clipboard.writeText(html).then(()=> alert('تم نسخ HTML'));
-    });
-    document.getElementById('copyTable').addEventListener('click', ()=>{
-      // نسخ نصي للجدول
-      let txt = '';
-      rows.forEach(r=> txt += `${r.brand}\t${r.size}\t${r.dims}\t${r.price}\n`);
-      navigator.clipboard.writeText(txt).then(()=> alert('تم نسخ الجدول كنص'));
-    });
-
-    /***********************
-     * حفظ / استيراد JSON
-     ***********************/
-    document.getElementById('saveJSON').addEventListener('click', ()=>{
-      const data = { title: tableTitleInput.value, rows };
-      const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+/* save image direct */
+downloadIMG.addEventListener('click', async ()=>{
+  const el = document.querySelector('.table-wrap');
+  html2canvas(el, {scale:3, useCORS:true, backgroundColor:null}).then(canvas=>{
+    canvas.toBlob(blob=>{
       const url = URL.createObjectURL(blob);
-      downloadURL(url, 'offers.json');
-      setTimeout(()=>URL.revokeObjectURL(url), 1000);
-    });
+      downloadURL(url, 'offers_image.png');
+      setTimeout(()=> URL.revokeObjectURL(url),1200);
+    }, 'image/png', 0.98)
+  });
+});
 
-    document.getElementById('btnUpload').addEventListener('click', ()=> document.getElementById('uploadJSON').click());
-    document.getElementById('uploadJSON').addEventListener('change', (e)=>{
-      const f = e.target.files[0];
-      if(!f) return;
-      const reader = new FileReader();
-      reader.onload = ()=> {
-        try{
-          const data = JSON.parse(reader.result);
-          if(Array.isArray(data.rows)) { rows = data.rows; tableTitleInput.value = data.title || tableTitleInput.value; renderAll(); }
-          else alert('ملف JSON غير صحيح');
-        }catch(err){ alert('خطأ بقراءة الملف'); }
-      };
-      reader.readAsText(f);
-    });
+/* export prices only (PDF) */
+exportPricesOnly.addEventListener('click', ()=>{
+  // نولد عنصر مؤقت للـ prices only
+  const container = document.createElement('div');
+  container.style.padding='18px';
+  container.style.background='#fff';
+  container.innerHTML = `<h3 style="text-align:center">قائمة الأسعار</h3><table style="width:100%;border-collapse:collapse">${rows.map(r=>`<tr><td style="padding:8px;border-bottom:1px solid #ddd">${escapeHTML(r.size)}</td><td style="padding:8px;border-bottom:1px solid #ddd">${numberWithCommas(r.price)}</td></tr>`).join('')}</table>`;
+  document.body.appendChild(container);
+  html2pdf().from(container).save().finally(()=> container.remove());
+});
 
-    /***********************
-     * مساعدة ودوال صغيرة
-     ***********************/
-    function numberWithCommas(x){ return String(x).replace(/\B(?=(\d{3})+(?!\d))/g, ","); }
-    function escapeHTML(s){ return String(s).replace(/[&<>"']/g, (m)=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]); }
-    function downloadURL(url, filename){
-      const a = document.createElement('a'); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
-    }
-    function hexToRgba(hex, alpha=1){
-      hex = hex.replace('#','');
-      if(hex.length===3) hex = hex.split('').map(s=>s+s).join('');
-      const r = parseInt(hex.substring(0,2),16);
-      const g = parseInt(hex.substring(2,4),16);
-      const b = parseInt(hex.substring(4,6),16);
-      return `rgba(${r},${g},${b},${alpha})`;
-    }
+/* download util */
+function downloadURL(url, filename){
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+}
 
-    // render مبدئي
-    function renderInitial(){
-      renderAll();
-      // وضع اللون الافتراضي
-      setAccent(colorInput.value);
-    }
-    renderInitial();
+/* save / clear local */
+saveLocalBtn.addEventListener('click', ()=> saveToLocal());
+clearLocalBtn.addEventListener('click', ()=>{
+  if(confirm('استعادة الحالة الافتراضية: هل تريد فعلاً؟')) {
+    localStorage.removeItem('lg_builder_v2');
+    rows = [
+      { brand:"سامسونك", size:"43 بوصة", dims:"95×55 سم", price:150000 },
+      { brand:"سامسونك", size:"50 بوصة", dims:"109×66 سم", price:235000 }
+    ];
+    footerText = "الأسعار تشمل ضمان سنة وتوصيل مجاني 🚚";
+    setAccent('#39c2a6');
+    renderAll();
+  }
+});
 
-    /***********************
-     * أحداث إضافية: نسخ/تحرير عبر النقر على صف المعاينة
-     ***********************/
-    previewTableArea.addEventListener('click', (e)=>{
-      const tr = e.target.closest('tr');
-      if(!tr) return;
-      const idx = parseInt(tr.dataset.idx);
-      if(Number.isNaN(idx)) return;
-      if(!confirm('تعديل هذا الصف؟')) return;
-      const r = rows[idx];
-      const brand = prompt('النوع:', r.brand); if(brand===null) return;
-      const size = prompt('الحجم:', r.size); if(size===null) return;
-      const dims = prompt('المقاس:', r.dims); if(dims===null) return;
-      const price = prompt('السعر:', r.price); if(price===null) return;
-      rows[idx] = { brand:brand||'—', size:size||'—', dims:dims||'—', price: parseInt(String(price).replace(/[^0-9]/g,''))||0 };
-      renderAll();
-    });
+/* clear all */
+clearAllBtn.addEventListener('click', ()=>{
+  if(!confirm('هل تريد حذف كل الصفوف؟')) return;
+  rows=[];
+  renderAll(); if(autoSave) saveToLocal();
+});
 
-    // تحسين: تحديث العرض عند تعديل بيانات خارجية
-    window.addEventListener('focus', renderAll);
-  </script>
+/* autosave toggle */
+autoSaveToggle.addEventListener('click', ()=>{
+  autoSave = !autoSave;
+  autoSaveToggle.textContent = autoSave ? 'تعطيل الحفظ التلقائي' : 'تفعيل الحفظ التلقائي';
+  if(autoSave) saveToLocal();
+});
+
+/* mode toggle (light/dark simple) */
+let lightMode=false;
+toggleMode.addEventListener('click', ()=>{
+  lightMode = !lightMode;
+  if(lightMode){
+    document.documentElement.style.setProperty('--glass-bg','rgba(255,255,255,0.06)');
+    document.documentElement.style.setProperty('--text','#062420');
+    document.body.style.background = 'linear-gradient(135deg,#eaf8f5 0%, #dff6f0 60%)';
+    toggleMode.textContent = 'تبديل لــ Dark/Light';
+  } else {
+    document.documentElement.style.setProperty('--glass-bg','rgba(140,200,180,0.10)');
+    document.documentElement.style.setProperty('--text','#e9fffb');
+    document.body.style.background = 'linear-gradient(135deg,#0b1f1a 0%, #092b27 40%, #071615 100%)';
+    toggleMode.textContent = 'تبديل لــ Dark/Light';
+  }
+});
+
+/* export CSV helper (optional) */
+function rowsToCSV(){
+  let txt = 'النوع,الحجم,المقاس,السعر\n';
+  rows.forEach(r=> txt += `${r.brand},${r.size},${r.dims},${r.price}\n`);
+  return txt;
+}
+
+/* export HTML copy - handled above */
+
+/* small toast */
+function showTempToast(msg){
+  const t = document.createElement('div');
+  t.textContent = msg;
+  t.style.position='fixed';
+  t.style.left='50%';
+  t.style.transform='translateX(-50%)';
+  t.style.bottom='28px';
+  t.style.padding='10px 14px';
+  t.style.borderRadius='12px';
+  t.style.background='rgba(0,0,0,0.7)';
+  t.style.color='#fff';
+  t.style.zIndex=9999;
+  document.body.appendChild(t);
+  setTimeout(()=> t.style.opacity='0.01',1400);
+  setTimeout(()=> t.remove(),2000);
+}
+
+/* intelligent accent suggestion (based on avg price) */
+function suggestAccentByData(){
+  if(rows.length===0) return;
+  const avg = rows.reduce((s,r)=>s+(r.price||0),0)/rows.length;
+  if(avg > 300000) { setAccent('#8a6b9b'); colorInput.value='#8a6b9b'; } // purple for high
+  else if(avg > 200000) { setAccent('#39c2a6'); colorInput.value='#39c2a6'; } // default
+  else { setAccent('#00b3ff'); colorInput.value='#00b3ff'; } // bright cyan for low-medium
+}
+
+/* small UI improvements: click on preview row => edit */
+tableContainer.addEventListener('click', (e)=>{
+  const tr = e.target.closest('tr');
+  if(!tr) return;
+  const idx = Number(tr.dataset.idx);
+  if(Number.isNaN(idx)) return;
+  if(!confirm('تعديل هذا الصف؟')) return;
+  const r = rows[idx];
+  const brand = prompt('النوع:', r.brand); if(brand===null) return;
+  const size = prompt('الحجم:', r.size); if(size===null) return;
+  const dims = prompt('المقاس:', r.dims); if(dims===null) return;
+  const price = prompt('السعر:', r.price); if(price===null) return;
+  rows[idx] = { brand:brand||'—', size:size||'—', dims:dims||'—', price: parseInt(String(price).replace(/[^0-9]/g,''))||0 };
+  renderAll(); if(autoSave) saveToLocal();
+});
+
+/* initial load from local or default */
+if(!loadFromLocal()) { renderAll(); setAccent('#39c2a6'); colorInput.value='#39c2a6'; }
+
+/* autosave periodically */
+setInterval(()=>{ if(autoSave) saveToLocal(); }, 12000);
+
+/* small improvement: show small pulsating on add sample */
+addSampleBtn.addEventListener('click', ()=> addSampleBtn.classList.add('pulse'), setTimeout(()=> addSampleBtn.classList.remove('pulse'),800));
+
+/* helper: temporary animation on many actions */
+function briefPulse(el){ el.classList.add('pulse'); setTimeout(()=> el.classList.remove('pulse'),900) }
+
+/* small UX: show list after each render */
+function refreshAllViews(){ renderAll(); briefPulse(document.querySelector('.panel')); suggestAccentByData(); }
+
+/* call render after changing rows */
+const originalRenderAll = renderAll;
+function renderAndSave(){ renderAll(); if(autoSave) saveToLocal(); }
+
+/* overwrite render functions to keep consistent usage */
+function renderAll(){ renderTable(searchInput.value); renderList(); document.getElementById('previewTitle').textContent='عروض شاشات سامسونج'; tableFooter.innerHTML = escapeHTML(footerText || ''); }
+
+/* wire up small controls still referencing functions */
+document.querySelectorAll('#addRow').forEach(btn => btn.addEventListener('click', ()=> { renderAndSave(); }));
+document.getElementById('addRow').addEventListener('click', ()=> { /* already handled earlier */ });
+
+/* key UX: when input price change, format? we'll keep raw numeric on save */
+
+/* finally ensure UI reflects initial state */
+renderAll();
+
+/* small accessibility: ENTER on price adds row */
+inpPrice.addEventListener('keydown', (e)=> { if(e.key==='Enter') addRowBtn.click(); });
+
+</script>
 </body>
 </html>
