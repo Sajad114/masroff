@@ -3,289 +3,322 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>مولد قوائم الأسعار المخصص</title>
+<title>صانع قوائم الأسعار الاحترافي</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800&display=swap" rel="stylesheet">
 
 <style>
-/* تعريف المتغيرات الافتراضية للألوان */
+/* === إعدادات المتغيرات العامة === */
 :root {
-    --bg-main: #0f172a;
-    --card-bg: #1e293b;
+    --main-bg: #0f172a;
+    --panel-bg: #1e293b;
+    --border: rgba(255,255,255,0.1);
+    --accent: #3b82f6;
     
-    /* ألوان الجدول القابلة للتخصيص */
-    --th-bg: #0f172a;           /* خلفية رأس الجدول */
-    --th-text: #38bdf8;         /* لون نص رأس الجدول */
-    --col-brand: #e2e8f0;       /* لون الماركة */
-    --col-size: #f59e0b;        /* لون الحجم */
-    --col-price: #22c55e;       /* لون السعر */
-    --border-color: rgba(255,255,255,0.08);
+    /* متغيرات الجدول القابلة للتخصيص */
+    --card-bg: #1e293b;
+    --header-gradient-1: #15803d;
+    --header-gradient-2: #22c55e;
+    --table-head-bg: #0f172a;
+    --table-head-text: #94a3b8;
+    --row-even-bg: rgba(255,255,255,0.02);
+    --row-hover: rgba(59, 130, 246, 0.1);
+    
+    /* ألوان النصوص */
+    --col-brand: #e2e8f0;
+    --col-size: #f59e0b;
+    --col-price: #22c55e;
+    --col-status: #94a3b8;
+    
+    /* أحجام الخطوط */
+    --font-scale: 1;
 }
 
-* { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
+* { box-sizing: border-box; font-family: 'Cairo', sans-serif; }
 
 body {
-    background: var(--bg-main);
+    background: var(--main-bg);
     color: #fff;
     margin: 0;
-    padding: 20px;
+    padding: 0;
+    min-height: 100vh;
     display: flex;
     justify-content: center;
 }
 
-.main-wrapper {
-    width: 100%;
-    max-width: 950px;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-}
-
-/* === لوحة التحكم (المدخلات + الألوان) === */
-.control-panel {
-    background: var(--card-bg);
-    padding: 20px;
-    border-radius: 16px;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
-    border: 1px solid rgba(255,255,255,0.1);
-}
-
-.panel-title { font-size: 18px; margin-bottom: 15px; color: #94a3b8; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; }
-
-.editor-grid {
+.app-container {
     display: grid;
-    grid-template-columns: 2fr 1fr;
-    gap: 20px;
+    grid-template-columns: 350px 1fr;
+    gap: 0;
+    width: 100%;
+    min-height: 100vh;
 }
 
-@media (max-width: 768px) { .editor-grid { grid-template-columns: 1fr; } }
+/* === الشريط الجانبي (الإعدادات) === */
+.sidebar {
+    background: var(--panel-bg);
+    border-left: 1px solid var(--border);
+    padding: 20px;
+    overflow-y: auto;
+    height: 100vh;
+    box-shadow: 5px 0 15px rgba(0,0,0,0.3);
+    z-index: 10;
+}
+
+.sidebar h2 { font-size: 18px; margin-bottom: 20px; color: var(--accent); display: flex; align-items: center; gap: 10px; }
+
+.control-group { margin-bottom: 25px; border-bottom: 1px solid var(--border); padding-bottom: 20px; }
+.control-group:last-child { border: none; }
+.group-title { font-size: 14px; color: #94a3b8; margin-bottom: 10px; font-weight: bold; }
 
 textarea {
     width: 100%;
-    height: 150px;
+    height: 120px;
     background: #020617;
-    border: 1px solid #334155;
-    color: white;
-    padding: 12px;
+    border: 1px solid var(--border);
+    color: #fff;
+    padding: 10px;
     border-radius: 8px;
-    resize: none;
-    font-size: 14px;
+    resize: vertical;
+    font-size: 13px;
+    margin-bottom: 10px;
 }
 
-/* أدوات تخصيص الألوان */
-.color-settings {
-    background: #0f172a;
-    padding: 15px;
-    border-radius: 8px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
+textarea:focus { outline: none; border-color: var(--accent); }
 
-.color-option {
+.setting-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: rgba(255,255,255,0.03);
-    padding: 8px;
-    border-radius: 6px;
+    margin-bottom: 12px;
 }
-
-.color-option label { font-size: 13px; color: #cbd5e1; }
+.setting-row label { font-size: 13px; color: #cbd5e1; }
 
 input[type="color"] {
     -webkit-appearance: none;
     border: none;
-    width: 35px;
-    height: 35px;
-    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    border-radius: 6px;
     cursor: pointer;
     background: none;
+    padding: 0;
 }
-input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
-input[type="color"]::-webkit-color-swatch { border: 2px solid #fff; border-radius: 50%; }
+input[type="range"] { width: 100px; accent-color: var(--accent); }
 
-.actions {
-    margin-top: 15px;
-    display: flex;
-    gap: 10px;
-}
-
-button {
-    flex: 1;
+.btn-primary {
+    width: 100%;
     padding: 12px;
-    border-radius: 8px;
+    background: var(--accent);
+    color: white;
     border: none;
+    border-radius: 8px;
     font-weight: bold;
     cursor: pointer;
+    margin-top: 10px;
     transition: 0.2s;
 }
+.btn-success { background: #22c55e; color: #064e3b; }
+button:hover { filter: brightness(1.1); }
 
-.btn-run { background: #3b82f6; color: white; }
-.btn-save { background: #10b981; color: white; }
-button:hover { opacity: 0.9; transform: scale(1.02); }
+/* === منطقة المعاينة === */
+.preview-area {
+    padding: 40px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    background: #0f172a;
+    background-image: radial-gradient(#1e293b 1px, transparent 1px);
+    background-size: 20px 20px;
+    overflow-y: auto;
+}
 
-/* === منطقة العرض (الجدول النهائي) === */
-.preview-container {
-    background: var(--card-bg); /* الخلفية التي ستظهر في الصورة */
+/* تصميم البطاقة النهائية */
+.price-card {
+    width: 100%;
+    max-width: 800px;
+    background: var(--card-bg);
     border-radius: 16px;
     overflow: hidden;
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 25px 50px -12px rgba(0,0,0,0.7);
+    border: 1px solid rgba(255,255,255,0.05);
     position: relative;
 }
 
-.header-brand {
-    background: linear-gradient(to right, #059669, #10b981);
-    padding: 25px;
+.card-header {
+    background: linear-gradient(135deg, var(--header-gradient-1), var(--header-gradient-2));
+    padding: 30px;
     text-align: center;
+    color: white;
 }
-.header-brand h1 { margin: 0; font-size: 24px; }
-.header-brand p { margin: 5px 0 0; opacity: 0.9; font-size: 14px; }
+.card-header h1 { margin: 0; font-size: calc(26px * var(--font-scale)); font-weight: 800; }
+.card-header p { margin: 5px 0 0; opacity: 0.9; font-size: calc(15px * var(--font-scale)); }
 
-.table-wrap { padding: 20px; }
+.table-wrapper { padding: 20px; }
 
-table { width: 100%; border-collapse: collapse; }
+table { width: 100%; border-collapse: separate; border-spacing: 0; }
 
-/* استخدام المتغيرات هنا لتلوين الجدول */
 thead th {
-    background-color: var(--th-bg);
-    color: var(--th-text);
+    background: var(--table-head-bg);
+    color: var(--table-head-text);
     padding: 15px;
-    font-size: 14px;
-    border-bottom: 2px solid var(--th-text);
+    text-align: center;
+    font-weight: 600;
+    font-size: calc(14px * var(--font-scale));
+    border-bottom: 2px solid rgba(255,255,255,0.05);
 }
 
-tbody tr { border-bottom: 1px solid var(--border-color); }
-tbody tr:last-child { border-bottom: none; }
+tbody tr { transition: background 0.2s; }
+tbody tr:nth-child(even) { background: var(--row-even-bg); }
+tbody tr:hover { background: var(--row-hover) !important; }
 
-td { padding: 14px; text-align: center; font-size: 15px; }
-
-/* تخصيص الأعمدة حسب المتغيرات */
-.col-brand { color: var(--col-brand); font-weight: 500; }
-.col-size { color: var(--col-size); font-weight: bold; background: rgba(255,255,255,0.02); border-radius: 6px; padding: 4px 12px; display:inline-block; }
-.col-price { color: var(--col-price); font-weight: 900; font-size: 17px; }
-
-.footer {
+td {
+    padding: 16px 10px;
     text-align: center;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    font-size: calc(16px * var(--font-scale));
+}
+
+/* تنسيق الأعمدة المخصص */
+.col-brand { color: var(--col-brand); font-weight: 600; }
+.col-size { 
+    color: var(--col-size); 
+    font-weight: 800; 
+    font-family: 'Segoe UI', sans-serif; /* للأرقام */
+    font-size: calc(18px * var(--font-scale));
+}
+.col-price { 
+    color: var(--col-price); 
+    font-weight: 800; 
+    font-size: calc(18px * var(--font-scale));
+}
+.col-status { color: var(--col-status); font-size: calc(14px * var(--font-scale)); }
+
+.card-footer {
     padding: 15px;
-    font-size: 12px;
+    text-align: center;
+    font-size: calc(12px * var(--font-scale));
     color: #64748b;
     border-top: 1px solid rgba(255,255,255,0.05);
+    background: rgba(0,0,0,0.1);
 }
 
-/* العلامة المائية للشركة */
-.watermark {
-    position: absolute;
-    bottom: 100px;
-    left: 50%;
-    transform: translateX(-50%);
-    font-size: 80px;
-    opacity: 0.03;
-    pointer-events: none;
-    font-weight: bold;
-    white-space: nowrap;
+/* الموبايل */
+@media (max-width: 900px) {
+    .app-container { grid-template-columns: 1fr; }
+    .sidebar { height: auto; border-left: none; border-bottom: 1px solid var(--border); }
+    .preview-area { padding: 20px 10px; }
 }
 </style>
 </head>
 <body>
 
-<div class="main-wrapper">
-
-    <div class="control-panel">
-        <div class="panel-title">⚙️ لوحة التحكم والإعدادات</div>
+<div class="app-container">
+    
+    <div class="sidebar">
+        <h2>🛠️ إعدادات القائمة</h2>
         
-        <div class="editor-grid">
-            <div>
-                <textarea id="rawInput" placeholder="اكتب البيانات هنا.. مثال:
-حجم 43 سامسونج السعر 250 الف
-حجم 50 ال جي السعر 400
-سوني حجم 65 سعر 600 الف"></textarea>
-                <div class="actions">
-                    <button class="btn-run" onclick="generateTable()">تحديث الجدول 🔄</button>
-                    <button class="btn-save" onclick="downloadImage()">حفظ الصورة 📸</button>
-                </div>
+        <div class="control-group">
+            <div class="group-title">البيانات</div>
+            <textarea id="rawInput" placeholder="اكتب هنا.. مثال:
+حجم 50 سامسونج السعر 400
+سوني حجم 65 سعر 600"></textarea>
+            <button class="btn-primary" onclick="generateTable()">تحديث الجدول 🔄</button>
+        </div>
+
+        <div class="control-group">
+            <div class="group-title">ألوان النصوص والأرقام</div>
+            <div class="setting-row">
+                <label>لون الماركة</label>
+                <input type="color" value="#e2e8f0" oninput="setVar('--col-brand', this.value)">
             </div>
-
-            <div class="color-settings">
-                <div style="font-size:14px; color:#94a3b8; margin-bottom:5px;">🎨 تخصيص الألوان</div>
-                
-                <div class="color-option">
-                    <label>لون الماركة (النوع)</label>
-                    <input type="color" value="#e2e8f0" oninput="updateColor('--col-brand', this.value)">
-                </div>
-                
-                <div class="color-option">
-                    <label>لون أيقونة الحجم</label>
-                    <input type="color" value="#f59e0b" oninput="updateColor('--col-size', this.value)">
-                </div>
-                
-                <div class="color-option">
-                    <label>لون السعر</label>
-                    <input type="color" value="#22c55e" oninput="updateColor('--col-price', this.value)">
-                </div>
-
-                <div class="color-option">
-                    <label>خلفية العناوين</label>
-                    <input type="color" value="#0f172a" oninput="updateColor('--th-bg', this.value)">
-                </div>
-
-                <div class="color-option">
-                    <label>نص العناوين</label>
-                    <input type="color" value="#38bdf8" oninput="updateColor('--th-text', this.value)">
-                </div>
+            <div class="setting-row">
+                <label>لون رقم الحجم</label>
+                <input type="color" value="#f59e0b" oninput="setVar('--col-size', this.value)">
+            </div>
+            <div class="setting-row">
+                <label>لون السعر</label>
+                <input type="color" value="#22c55e" oninput="setVar('--col-price', this.value)">
+            </div>
+            <div class="setting-row">
+                <label>لون الحالة (متوفر)</label>
+                <input type="color" value="#94a3b8" oninput="setVar('--col-status', this.value)">
             </div>
         </div>
+
+        <div class="control-group">
+            <div class="group-title">المظهر العام</div>
+            <div class="setting-row">
+                <label>لون رأس القائمة (بداية)</label>
+                <input type="color" value="#15803d" oninput="setVar('--header-gradient-1', this.value)">
+            </div>
+            <div class="setting-row">
+                <label>لون رأس القائمة (نهاية)</label>
+                <input type="color" value="#22c55e" oninput="setVar('--header-gradient-2', this.value)">
+            </div>
+            <div class="setting-row">
+                <label>خلفية الكارت</label>
+                <input type="color" value="#1e293b" oninput="setVar('--card-bg', this.value)">
+            </div>
+            <div class="setting-row">
+                <label>حجم الخطوط</label>
+                <input type="range" min="0.8" max="1.3" step="0.1" value="1" oninput="setVar('--font-scale', this.value)">
+            </div>
+        </div>
+
+        <button class="btn-primary btn-success" onclick="downloadImage()">حفظ الصورة النهائية 📸</button>
     </div>
 
-    <div class="preview-container" id="captureTarget">
-        <div class="header-brand">
-            <h1 contenteditable="true">شركة سوبر ماكس</h1>
-            <p contenteditable="true">بغداد - كرادة خارج | 07711272744</p>
-        </div>
+    <div class="preview-area">
+        <div class="price-card" id="captureTarget">
+            <div class="card-header">
+                <h1 contenteditable="true">شركة سوبر ماكس</h1>
+                <p contenteditable="true">بغداد - كرادة خارج  | 07711272744</p>
+            </div>
 
-        <div class="watermark">سوبر ماكس</div>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>الماركة</th>
+                            <th>الحجم (بوصة)</th>
+                            <th>السعر (د.ع)</th>
+                            <th>الحالة</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        </tbody>
+                </table>
+            </div>
 
-        <div class="table-wrap">
-            <table>
-                <thead>
-                    <tr>
-                        <th>الماركة / الشركة</th>
-                        <th>حجم الشاشة</th>
-                        <th>السعر (دينار)</th>
-                        <th>الحالة</th>
-                    </tr>
-                </thead>
-                <tbody id="tableBody">
-                    </tbody>
-            </table>
-        </div>
-
-        <div class="footer">
-            تم إنشاء هذه القائمة بتاريخ <span id="dateDisplay"></span> • الأسعار نهائية
+            <div class="card-footer">
+                تم التحديث بتاريخ: <span id="currentDate"></span> • الأسعار قابلة للتغيير
+            </div>
         </div>
     </div>
 
 </div>
 
 <script>
-    // 1. تحديث التاريخ
-    document.getElementById('dateDisplay').innerText = new Date().toLocaleDateString('ar-IQ');
+    // تهيئة التاريخ
+    document.getElementById('currentDate').innerText = new Date().toLocaleDateString('ar-IQ');
 
-    // 2. دالة تحديث الألوان (CSS Variables)
-    function updateColor(variable, value) {
-        document.documentElement.style.setProperty(variable, value);
+    // دالة تغيير متغيرات CSS
+    function setVar(name, value) {
+        document.documentElement.style.setProperty(name, value);
     }
 
-    // 3. تنسيق الأرقام
+    // تنسيق الأرقام
     function normalizeNumbers(text){
         const map = {'٠':'0','١':'1','٢':'2','٣':'3','٤':'4','٥':'5','٦':'6','٧':'7','٨':'8','٩':'9'};
         return text.replace(/[٠-٩]/g, d => map[d]);
     }
-    
+
     function formatPrice(num) {
         return new Intl.NumberFormat('en-US').format(num);
     }
 
-    // 4. توليد الجدول الذكي
+    // المحرك الأساسي
     function generateTable() {
         const input = document.getElementById("rawInput").value.trim();
         const body = document.getElementById("tableBody");
@@ -299,55 +332,55 @@ td { padding: 14px; text-align: center; font-size: 15px; }
             let cleanLine = normalizeNumbers(line);
             if(cleanLine.trim() === "") return;
 
-            // Regex Patterns
+            // Regex:
+            // استخراج الحجم (رقم فقط)
             const sizeMatch = cleanLine.match(/(\d{2,})\s*(بوصة|inch)?/i) || cleanLine.match(/حجم\s*(\d+)/);
+            // استخراج السعر
             const priceMatch = cleanLine.match(/(\d{2,})\s*(الف|ألف)/) || cleanLine.match(/سعر\s*(\d+)/);
 
             if (sizeMatch && priceMatch) {
-                // استخراج الماركة بذكاء عن طريق حذف الأرقام والكلمات المحجوزة
+                // استخراج اسم الماركة
                 let brand = cleanLine
-                    .replace(sizeMatch[0], '')
-                    .replace(priceMatch[0], '')
-                    .replace(/حجم|السعر|سعر|بوصة|الف|ألف|د.ع/g, '')
+                    .replace(sizeMatch[0], '') // حذف نص الحجم
+                    .replace(priceMatch[0], '') // حذف نص السعر
+                    .replace(/حجم|السعر|سعر|بوصة|الف|ألف|د.ع/g, '') // تنظيف كلمات
                     .trim();
                 
-                // تنظيف الرموز
-                brand = brand.replace(/^[-–—.]/, '').trim();
-                if(brand.length < 2) brand = "شاشة عامة";
+                brand = brand.replace(/^[-–—.]/, '').trim(); // تنظيف رموز البداية
+                if(brand.length < 2) brand = "شاشة";
 
                 const tr = document.createElement("tr");
                 tr.innerHTML = `
                     <td class="col-brand">${brand}</td>
-                    <td><span class="col-size">${sizeMatch[1]} بوصة</span></td>
+                    <td class="col-size">${sizeMatch[1]}</td> 
                     <td class="col-price">${formatPrice(priceMatch[1])},000</td>
-                    <td style="color:#94a3b8; font-size:13px">متوفر ✅</td>
+                    <td class="col-status">متوفر</td>
                 `;
+                // ملاحظة: الحجم يظهر رقماً فقط (sizeMatch[1])
+                // الحالة تظهر كلمة "متوفر" فقط بدون صح
+                
                 body.appendChild(tr);
             }
         });
     }
 
-    // 5. حفظ الصورة بدقة عالية
+    // تحميل الصورة
     function downloadImage() {
         const element = document.getElementById("captureTarget");
         
-        // إخفاء الـ border radius مؤقتاً لتظهر الصورة زواياها حادة (اختياري)
-        // element.style.borderRadius = "0"; 
-
         html2canvas(element, {
-            scale: 2, // جودة مضاعفة
-            backgroundColor: "#1e293b", // نفس لون خلفية الكارد
+            scale: 2.5, // جودة عالية جداً
+            backgroundColor: null, // استخدام خلفية العنصر نفسها
             useCORS: true
         }).then(canvas => {
             const link = document.createElement('a');
-            link.download = 'Price-List.png';
+            link.download = 'Price_List_' + Date.now() + '.png';
             link.href = canvas.toDataURL();
             link.click();
-            // element.style.borderRadius = "16px"; // إرجاع الشكل
         });
     }
 
-    // تشغيل الدالة مرة واحدة عند التحميل لعرض مثال
+    // تشغيل مبدئي
     window.onload = generateTable;
 </script>
 
